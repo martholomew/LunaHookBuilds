@@ -60,7 +60,7 @@ jobs:
           path: artifacts
       - name: Organize artifacts
         run: |
-          mkdir -p src/cpp/LunaHook/build/{winxp,64}
+          mkdir -p src/cpp/LunaHook/build/release
           cp -r artifacts/winxp/* src/cpp/LunaHook/build/release
           cp -r artifacts/win64/* src/cpp/LunaHook/build/release
         shell: bash
