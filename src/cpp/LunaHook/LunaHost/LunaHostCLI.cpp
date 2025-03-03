@@ -27,7 +27,8 @@ int main()
 		fflush(stdout);
 		return false; });
 	wchar_t input[500] = {};
-	SearchParam sp = {};
+	SearchParam sp;
+	memset(&sp, 0, sizeof(SearchParam));
 	sp.codepage = Host::defaultCodepage;
 	sp.length = 0;
 	while (fgetws(input, 500, stdin))
