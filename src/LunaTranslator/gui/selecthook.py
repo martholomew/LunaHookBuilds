@@ -12,6 +12,7 @@ from gui.usefulwidget import (
     getsimplecombobox,
     MySwitch,
     getsimpleswitch,
+    getsimplepatheditor,
     FocusSpin,
     FocusCombo,
     IconButton,
@@ -121,6 +122,7 @@ class searchhookparam(LDialog):
             return default
 
     def searchstart(self):
+        dumpvalues = {}
         idx = self.searchmethod.idx()
         usestruct = gobject.baseobject.textsource.defaultsp()
         if idx == 0:
@@ -135,7 +137,6 @@ class searchhookparam(LDialog):
                 QMessageBox.information(self, _TR("警告"), _TR("搜索文本过短！"))
                 return
         elif idx == 2:
-            dumpvalues = {}
             for k, widget in self.regists.items():
                 if isinstance(widget, QLineEdit):
                     dumpvalues[k] = widget.text()
@@ -183,7 +184,9 @@ class searchhookparam(LDialog):
             ]  # dumpvalues[6]
             usestruct.searchTime = dumpvalues["time"] * 1000  # dumpvalues[7]
             usestruct.maxRecords = dumpvalues["maxrecords"]  # dumpvalues[8]
-        gobject.baseobject.textsource.findhook(usestruct)
+        gobject.baseobject.textsource.findhook(
+            usestruct, dumpvalues.get("addresses", None)
+        )
         if idx != 1:
             self.parent().findhookchecked()
         self.close()
@@ -195,6 +198,22 @@ class searchhookparam(LDialog):
             [hex_str[i : i + 2] for i in range(0, len(hex_str), 2)]
         )
         return space_hex_str
+
+    def showEvent(self, a0):
+
+        try:
+            _list = self.getlistcall()
+        except:
+            _list = []
+        text: QLineEdit = self.saveline
+        t = text.text()
+        self.savecombo.clear()
+        self.savecombo.addItems(_list)
+        if t:
+            text.setText(t)
+            if t in _list:
+                self.savecombo.setCurrentIndex(_list.index(t))
+        return super().showEvent(a0)
 
     def __init__(self, parent) -> None:
         super().__init__(parent, Qt.WindowType.WindowCloseButtonHint)
@@ -273,21 +292,16 @@ class searchhookparam(LDialog):
                 regwid = addwid = sp
             elif _type == 2:
                 line = QLineEdit(str(_val))
-                try:
-                    _list = getlistcall()
-                except:
-                    _list = []
-                if len(_list) == 0:
-                    regwid = addwid = line
-                else:
-                    combo = FocusCombo()
-                    combo.addItems(_list)
 
-                    combo.setLineEdit(line)
-                    line.setReadOnly(not listeditable)
+                combo = FocusCombo()
+                self.getlistcall = getlistcall
+                self.savecombo = combo
+                self.saveline = line
+                combo.setLineEdit(line)
+                line.setReadOnly(not listeditable)
 
-                    addwid = combo
-                    regwid = line
+                addwid = combo
+                regwid = line
             uselayout.addRow(_vis, addwid)
             self.regists[reg] = regwid
 
@@ -359,6 +373,24 @@ class searchhookparam(LDialog):
         self.search_method.addW("函数对齐", QLabel())
         self.search_method.addW("函数调用", QLabel())
 
+        addresses = [""]
+
+        def callback(fn):
+            with open(fn, "r", encoding="utf8") as ff:
+                addresses.append(ff.read())
+
+        self.regists["addresses"] = lambda: addresses[-1]
+        self.search_method.addW(
+            "地址表",
+            getsimplepatheditor(
+                text="",
+                callback=callback,
+                icons=("fa.folder-open",),
+                clearable=False,
+                w=True,
+            ),
+        )
+
         autoaddline(
             "pattern",
             "搜索匹配的特征_(hex)",
@@ -381,7 +413,6 @@ class searchhookparam(LDialog):
         btn = LPushButton("开始搜索")
         btn.clicked.connect(self.searchstart)
         mainlayout.addWidget(btn)
-        self.show()
 
 
 class hookselect(closeashidewindow):
@@ -391,13 +422,14 @@ class hookselect(closeashidewindow):
     removehooksignal = pyqtSignal(tuple)
     getfoundhooksignal = pyqtSignal(dict)
     update_item_new_line = pyqtSignal(tuple, str)
-
     SaveTextThreadRole = Qt.ItemDataRole.UserRole + 1
 
     def __init__(self, parent):
         super(hookselect, self).__init__(parent, globalconfig["selecthookgeo"])
         self.setupUi()
         self.hidesearchhookbuttons()
+        self.firsttimex = True
+        self.searchhookparam = None
         self.removehooksignal.connect(self.removehook)
         self.addnewhooksignal.connect(self.addnewhook)
         self.getnewsentencesignal.connect(self.getnewsentence)
@@ -763,8 +795,12 @@ class hookselect(closeashidewindow):
             return
         if globalconfig["sourcestatus2"]["texthook"]["use"] == False:
             return
-        QMessageBox.warning(self, _TR("警告"), _TR("该功能可能会导致游戏崩溃！"))
-        searchhookparam(self)
+        if self.firsttimex:
+            self.firsttimex = False
+            QMessageBox.warning(self, _TR("警告"), _TR("该功能可能会导致游戏崩溃！"))
+        if not self.searchhookparam:
+            self.searchhookparam = searchhookparam(self)
+        self.searchhookparam.show()
 
     def findhookchecked(self):
         if gobject.baseobject.textsource.pids:

@@ -18,6 +18,7 @@
     "excule_from_self": true,
     "showrangeafterrangeselect": true,
     "autodisappear": false,
+    "autodisappear_which": 0,
     "WindowBackdrop": 3,
     "WindowEffect": 0,
     "WindowEffect_shadow": false,
@@ -391,14 +392,23 @@
     "ocr_diff_sim": 0.95,
     "ocr_text_diff": 3,
     "autorun": true,
-    "usewebview": 1,
     "fontsize": 17.0,
     "fontsizeori": 17.0,
     "localeswitchmethod": 0,
     "hide_not_exists": false,
     "startgamenototop": true,
-    "extra_space": 0,
-    "extra_space_trans": 0,
+    "lineheights": {
+        "lineHeight": 1,
+        "lineHeightNormal": true,
+        "marginTop": 0,
+        "marginBottom": 0
+    },
+    "lineheightstrans": {
+        "lineHeight": 1,
+        "lineHeightNormal": true,
+        "marginTop": 0,
+        "marginBottom": 0
+    },
     "fonttype": "",
     "fonttype2": "",
     "hira_vis_type": 0,
@@ -413,6 +423,7 @@
     "transparent_tool": 50,
     "isshowhira": true,
     "locktools": true,
+    "locktoolsEx": false,
     "showfanyisource": false,
     "showfanyi": true,
     "autoread": false,
@@ -429,7 +440,6 @@
             "lunadeck"
         ],
         "ModelName6": "modelofluna",
-        "allowDuplicate": true,
         "autoUpdateModel": true,
         "ocrcroped": false,
         "autoruntts": false,
@@ -491,6 +501,7 @@
         400,
         400
     ],
+    "hovercolor": "#80000000",
     "anki_Orientation_V": true,
     "gamemanageruseversion": 0,
     "gamemanager_integrated_internal_layout": 2,
@@ -647,23 +658,11 @@
             },
             "noundict": {
                 "use": false,
-                "tip": "专有名词翻译_全局",
-                "icon": "fa.book",
-                "align": 0
-            },
-            "noundict_2": {
-                "use": false,
                 "tip": "专有名词翻译",
                 "icon": "fa.book",
                 "align": 0
             },
             "fix": {
-                "use": false,
-                "tip": "翻译结果修正_全局",
-                "icon": "fa.won",
-                "align": 0
-            },
-            "fix_2": {
                 "use": false,
                 "tip": "翻译结果修正",
                 "icon": "fa.won",
@@ -1038,11 +1037,6 @@
                 "name": "Anki_录音_例句",
                 "keystring": ""
             },
-            "_31": {
-                "use": false,
-                "name": "画廊_录音",
-                "keystring": ""
-            },
             "_32": {
                 "use": false,
                 "name": "自动朗读",
@@ -1224,16 +1218,6 @@
                 "rate",
                 "pitch"
             ]
-        }
-    },
-    "update": {
-        "lunatranslator": {
-            "useproxy": true,
-            "name": "lunatranslator.org"
-        },
-        "github": {
-            "useproxy": true,
-            "name": "GitHub"
         }
     },
     "hirasetting": {
@@ -1932,6 +1916,7 @@
     "mustocr_interval": 5,
     "ocrmininterval": 1,
     "selectable": true,
+    "selectableEx": false,
     "autoupdate": true,
     "proxies": null,
     "viewlistpos": 0,

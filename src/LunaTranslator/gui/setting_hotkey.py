@@ -1,5 +1,5 @@
 from qtsymbols import *
-import functools
+import functools, time
 import gobject, windows, winsharedutils
 from myutils.config import globalconfig, _TR
 from myutils.hwnd import grabwindow
@@ -42,7 +42,15 @@ def autoreadswitch(self):
 def safeGet():
 
     t = winsharedutils.GetSelectedText()
-    if not t:
+    if t is None:
+        gobject.baseobject.freezeclipboard = True
+        windows.keybd_event(67, 0, 0, 0)
+        windows.keybd_event(windows.VK_CONTROL, 0, 0, 0)
+        time.sleep(0.1)
+        windows.keybd_event(windows.VK_CONTROL, 0, windows.KEYEVENTF_KEYUP, 0)
+        windows.keybd_event(67, 0, windows.KEYEVENTF_KEYUP, 0)
+        t = winsharedutils.clipboard_get()
+    if 0:
         QToolTip.showText(
             QCursor.pos(), _TR("取词失败"), gobject.baseobject.commonstylebase
         )
@@ -93,7 +101,6 @@ def registrhotkeys(self):
         ),
         "_29": lambda: gobject.baseobject.searchwordW.ankiwindow.recordbtn1.click(),
         "_30": lambda: gobject.baseobject.searchwordW.ankiwindow.recordbtn2.click(),
-        "_31": lambda: gobject.baseobject.hualang_recordbtn.click(),
         "_32": functools.partial(autoreadswitch, self),
         "_33": lambda: gobject.baseobject.searchwordW.soundbutton.click(),
         "_35": lambda: gobject.baseobject.searchwordW.ankiconnect.customContextMenuRequested.emit(
@@ -122,7 +129,7 @@ hotkeys = [
     ["OCR", ["_13", "_14", "_14_1", "_26", "_26_1"]],
     ["剪贴板", ["36", "_4", "_28"]],
     ["TTS", ["_32", "_7", "_7_1"]],
-    ["游戏", ["_15", "_21", "_22", "41", "42", "_25", "_27", "_31"]],
+    ["游戏", ["_15", "_21", "_22", "41", "42", "_25", "_27"]],
     ["查词", ["37", "40", "39", "_29", "_30", "_35", "_33"]],
 ]
 

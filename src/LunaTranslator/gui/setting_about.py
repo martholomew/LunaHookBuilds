@@ -33,7 +33,7 @@ def tryqueryfromhost():
             res = requests.get(
                 "{main_server}/version".format(main_server=main_server),
                 verify=False,
-                proxies=getproxy(("update", "lunatranslator")),
+                proxies=getproxy(),
             )
             res = res.json()
             gobject.serverindex = i
@@ -113,11 +113,9 @@ def updatemethod(urls, self):
     )
 
     savep = gobject.getcachedir("update/" + url.split("/")[-1])
-    if url.startswith("https://github.com"):
-        __x = "github"
-    else:
-        __x = "lunatranslator"
-    r2 = requests.head(url, verify=False, proxies=getproxy(("update", __x)))
+    if not savep.endswith(".zip"):
+        savep += ".zip"
+    r2 = requests.head(url, verify=False, proxies=getproxy())
     size = int(r2.headers["Content-Length"])
     if check_interrupt():
         return
@@ -129,10 +127,10 @@ def updatemethod(urls, self):
             url,
             stream=True,
             verify=False,
-            proxies=getproxy(("update", __x)),
+            proxies=getproxy(),
         )
         file_size = 0
-        for i in r.iter_content(chunk_size=1024):
+        for i in r.iter_content(chunk_size=1024 * 32):
             if check_interrupt():
                 return
             if not i:
@@ -144,7 +142,7 @@ def updatemethod(urls, self):
             prg = int(10000 * file_size / size)
             prg100 = prg / 100
             sz = int(1000 * (int(size / 1024) / 1024)) / 1000
-            self.downloadprogress_cache = (
+            self.progresssignal4.emit(
                 _TR("总大小_{} MB _进度_{:0.2f}%").format(sz, prg100),
                 prg,
             )
@@ -156,7 +154,7 @@ def updatemethod(urls, self):
 
 
 def uncompress(self, savep):
-    self.downloadprogress_cache = (_TR("正在解压"), 10000)
+    self.progresssignal4.emit(_TR("正在解压"), 10000)
     shutil.rmtree(gobject.getcachedir("update/LunaTranslator/"))
     with zipfile.ZipFile(savep) as zipf:
         zipf.extractall(gobject.getcachedir("update"))
@@ -168,7 +166,7 @@ def versioncheckthread(self):
     while True:
         x = versionchecktask.get()
         gobject.baseobject.update_avalable = False
-        self.downloadprogress_cache = ("", 0)
+        self.progresssignal4.emit("", 0)
         if not x:
             continue
         self.versiontextsignal.emit("获取中")  # ,'',url,url))
@@ -189,10 +187,10 @@ def versioncheckthread(self):
         )
         if not (need and globalconfig["autoupdate"]):
             continue
-        self.downloadprogress_cache = ("……", 0)
+        self.progresssignal4.emit("……", 0)
         savep = updatemethod(_version[1:], self)
         if not savep:
-            self.downloadprogress_cache = (_TR("自动更新失败，请手动更新"), 0)
+            self.progresssignal4.emit(_TR("自动更新失败，请手动更新"), 0)
             continue
 
         uncompress(self, savep)
@@ -205,7 +203,7 @@ def versioncheckthread(self):
 
 def createdownloadprogress(self):
 
-    self.downloadprogress = QProgressBar()
+    self.downloadprogress = QProgressBar(self)
 
     self.downloadprogress.setRange(0, 10000)
     self.downloadprogress.setVisible(False)
@@ -223,9 +221,7 @@ def createdownloadprogress(self):
         if val or text:
             self.downloadprogress.setVisible(True)
 
-    self.downloadprogresstimer = QTimer(self.downloadprogress)
-    self.downloadprogresstimer.timeout.connect(functools.partial(__cb, self))
-    self.downloadprogresstimer.start(100)
+    __cb(self)
     return self.downloadprogress
 
 
@@ -363,11 +359,15 @@ def setTab_about1(self, basel):
 
 def setTab_about(self, basel):
     tab_widget, do = makesubtab_lazy(
-        ["关于软件", "其他设置", "年度总结"],
+        [
+            "关于软件",
+            "其他设置",
+            # "年度总结"
+        ],
         [
             functools.partial(setTab_about1, self),
             functools.partial(setTab_update, self),
-            functools.partial(yearsummary, self),
+            # functools.partial(yearsummary, self),
         ],
         delay=True,
     )

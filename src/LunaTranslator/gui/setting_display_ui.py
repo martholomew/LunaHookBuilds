@@ -256,6 +256,7 @@ def __changeuibuttonstate3(self, x):
 
 
 def __changeuibuttonstate(self, x):
+    globalconfig["locktoolsEx"] = False
     gobject.baseobject.translation_ui.refreshtoolicon()
 
     gobject.baseobject.translation_ui.enterfunction()
@@ -275,6 +276,7 @@ def uisetting(self, l):
 
 
 def __changeselectablestate(self, x):
+    globalconfig["selectableEx"] = False
     gobject.baseobject.translation_ui.refreshtoolicon()
     gobject.baseobject.translation_ui.translate_text.setselectable(x)
 
@@ -282,6 +284,28 @@ def __changeselectablestate(self, x):
 def switch_webview2_darklight():
     for widget in QApplication.allWidgets():
         QApplication.postEvent(widget, QEvent(QEvent.Type.User + 1))
+
+
+def createdynamicswitch(self):
+    def __(x):
+        self.disappear_delay.setMinimum([1, 0][x])
+        globalconfig["disappear_delay"] = max(
+            globalconfig["disappear_delay"], [1, 0][x]
+        )
+
+    return D_getsimplecombobox(
+        ["窗口", "文本"], globalconfig, "autodisappear_which", callback=__
+    )()
+
+
+def createdynamicdelay(self):
+    self.disappear_delay = D_getspinbox(
+        [1, 0][globalconfig["autodisappear_which"]],
+        100,
+        globalconfig,
+        "disappear_delay",
+    )()
+    return self.disappear_delay
 
 
 def mainuisetting(self):
@@ -506,13 +530,20 @@ def mainuisetting(self):
                                 name="mousetransbutton",
                             ),
                             "",
-                            "自动隐藏窗口",
-                            D_getsimpleswitch(globalconfig, "autodisappear"),
-                            D_getspinbox(
-                                1,
-                                100,
-                                globalconfig,
-                                "disappear_delay",
+                            "自动隐藏",
+                            (
+                                getboxlayout(
+                                    [
+                                        D_getsimpleswitch(
+                                            globalconfig, "autodisappear"
+                                        ),
+                                        lambda: createdynamicswitch(self),
+                                        lambda: createdynamicdelay(self),
+                                    ],
+                                    makewidget=True,
+                                    margin0=True,
+                                ),
+                                0,
                             ),
                         ],
                     ),

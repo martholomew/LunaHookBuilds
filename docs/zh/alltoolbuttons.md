@@ -59,11 +59,14 @@
     该按钮作用仅是一键使得翻译窗口的不透明度切换到0。这个切换不会使得原版的不透明度设置被遗忘。
     
 1. #### <i class="fa fa-lock"></i> <i class="btnstatus2 fa fa-unlock"></i> 锁定工具栏
-    未锁定工具栏时，当鼠标移出时，工具栏会自动隐藏；激活后工具栏将始终显示。
+    激活后工具栏将始终显示。
+    
+    未锁定工具栏时，当鼠标移出时，工具栏会自动隐藏，进入窗口后工具栏恢复显示；如果是使用鼠标右键取消的锁定工具栏，则仅当鼠标进入到**锁定工具栏按钮及其左右一个按钮的区域**时，工具栏才恢复显示。
 
     未锁定工具栏时，如果激活了`鼠标穿透窗口`，则仅当鼠标移动到**鼠标穿透窗口按钮及其左右一个按钮的区域**时，工具栏才显示；否则只要鼠标进入到翻译窗口，工具就会显示。
 
     如果当前使用了窗口特效(Aero/Arylic)，且不锁定工具栏，则工具栏会处于文本区的z轴之上的区域，而非处于文本区的y轴上面。这是因为由于Windows的原因，使用窗口特效时，如果将工具栏只是隐藏而非将缩去其窗口高度，则被隐藏的工具栏仍会被渲染亚力克/Aero背景，导致工具栏所在区域会有一块空白。
+
 1. #### <i class="fa fa-link"></i> <i class="fa fa-icon fa-rotate-right"></i> 选择游戏
     **该按钮仅在HOOK模式下可用**
     
@@ -95,13 +98,13 @@
     当使用过一次`进行一次OCR`后，使用这个按钮，可以在原来的位置上再次进行一次OCR而无需重新选择识别区域。
     
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 专有名词翻译_直接替换
-1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 专有名词翻译_全局
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> 专有名词翻译
-1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> 翻译结果修正_全局
 1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> 翻译结果修正
-    以上五个按钮，效果类似，是用来快捷打开翻译优化的设置窗口，增加新的指定词条的。
+    以上三个按钮，效果类似，是用来快捷打开翻译优化的设置窗口，增加新的指定词条的。
 
-    对于`全局`，则一定打开全局的词典设置。对于非`全局`，则当有绑定的游戏(HOOK链接游戏/剪贴板、OCR绑定窗口)时，打开游戏的专用词典设置，否则则是打开全局的词典设置
+    鼠标左键点击时，当有绑定的游戏(HOOK链接游戏/剪贴板、OCR绑定窗口)时，打开游戏的专用词典设置，否则则是打开全局的词典设置。
+
+    鼠标右键点击时，必然打开全局的词典设置。
 1. #### <i class="fa fa-minus"></i> <i class="fa fa-icon fa-rotate-right"></i> 最小化到托盘
     略
 1. #### <i class="fa fa-times"></i> <i class="fa fa-icon fa-rotate-right"></i> 退出
@@ -153,9 +156,9 @@
 1. #### <i class="fa fa-download"></i> <i class="fa fa-icon fa-rotate-right"></i> 模拟按键Enter
     同上，用于向游戏窗口发送一次模拟按键。对于使用串流/平板时，有些作用。
 1. #### <i class="fa fa-list-ul"></i> <i class="fa fa-icon fa-rotate-right"></i> 备忘录
-    对于当前正在玩的游戏，打开备忘录窗口。对于每个游戏都有单独的一个备忘录文件。
-
-    可以用来临时写点笔录，或者把攻略复制进来看并且随玩随删，很方便，免去打开网页/单独开一个txt文件的麻烦，非常实用。
+    对于当前正在玩的游戏，打开备忘录窗口。
+    
+    点击左键时，打开当前游戏的备忘录。点击右键时，打开全局的备忘录。
 1. #### <i class="fab fa-windows"></i> <i class="btnstatus2 fab fa-windows"></i> 绑定窗口（部分软件不支持）（点击自己取消）
     **该按钮非常重要，许多功能都依赖于该按钮先进行设置后才可用**
 
@@ -170,7 +173,9 @@
 1. #### <i class="fa fa-neuter"></i> <i class="btnstatus2 fa fa-neuter"></i> 窗口置顶
     取消/置顶翻译窗口
 1. #### <i class="fa fa-i-cursor"></i> <i class="btnstatus2 fa fa-i-cursor"></i> 可选取的
-    使得翻译窗的文本区中的文本，是可用进行选择的。当激活了可选取后，无法在文本去进行拖动而只能拖动工具栏（因为拖动时是在选取文本）
+    使得翻译窗的文本区中的文本，是可以进行选择的。
+
+    如果激活时点击的是鼠标右键，则同时会禁止拖拽非文本区域以移动窗口。
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> 查词
-    打开查词窗口。
+    如果当前有文本被选取，则会查询选取的文本并打开查词窗口。否则只是打开或关闭查词窗口。
   

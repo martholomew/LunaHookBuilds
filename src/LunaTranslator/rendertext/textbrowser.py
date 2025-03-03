@@ -12,9 +12,10 @@ from traceback import print_exc
 from rendertext.textbrowser_imp.base import base
 from gui.dynalang import LAction
 
+reference = []
+
 
 class Qlabel_c(QLabel):
-
     def mousePressEvent(self, ev):
         self.pr = True
         return super().mousePressEvent(ev)
@@ -42,19 +43,28 @@ class Qlabel_c(QLabel):
     def enterEvent(self, a0) -> None:
         try:
             if self.company:
-                self.company.setStyleSheet("background-color: rgba(0,0,0,0.5);")
+                self.company.ref.setStyleSheet(
+                    "background-color: " + globalconfig["hovercolor"]
+                )
+                reference.append(self.company.ref.setStyleSheet)
         except:
             pass
-        self.setStyleSheet("background-color: rgba(0,0,0,0.5);")
+        self.ref.setStyleSheet("background-color: " + globalconfig["hovercolor"])
+        reference.append(self.ref)
         return super().enterEvent(a0)
 
     def leaveEvent(self, a0) -> None:
         try:
             if self.company:
-                self.company.setStyleSheet("background-color: rgba(0,0,0,0.01);")
+                self.company.ref.setStyleSheet("background-color: rgba(0,0,0,0.01);")
+                reference.remove(self.company.ref)
         except:
             pass
-        self.setStyleSheet("background-color: rgba(0,0,0,0.01);")
+        self.ref.setStyleSheet("background-color: rgba(0,0,0,0.01);")
+        try:
+            reference.remove(self.ref)
+        except:
+            pass
         return super().leaveEvent(a0)
 
 
@@ -144,6 +154,8 @@ class QTextBrowser_1(QTextEdit):
         return rect1.contains(ev.pos())
 
     def mouseMoveEvent(self, ev: QMouseEvent):
+        if globalconfig["selectable"] and globalconfig["selectableEx"]:
+            return super().mouseMoveEvent(ev)
         for label in self.parent().searchmasklabels:
             if label.geometry().contains(ev.pos()):
                 continue
@@ -152,15 +164,21 @@ class QTextBrowser_1(QTextEdit):
                 label.company.refmask.setStyleSheet(
                     "background-color: rgba(0,0,0,0.01);"
                 )
+                reference.remove(label.refmask)
+                reference.remove(label.company.refmask)
             except:
                 pass
         targetlabel = self.getcurrlabel(ev.pos())
         if targetlabel and targetlabel.isVisible():
             try:
-                targetlabel.refmask.setStyleSheet("background-color: rgba(0,0,0,0.5);")
-                targetlabel.company.refmask.setStyleSheet(
-                    "background-color: rgba(0,0,0,0.5);"
+                targetlabel.refmask.setStyleSheet(
+                    "background-color: " + globalconfig["hovercolor"]
                 )
+                targetlabel.company.refmask.setStyleSheet(
+                    "background-color: " + globalconfig["hovercolor"]
+                )
+                reference.append(self.refmask.setStyleSheet)
+                reference.append(self.company.refmask.setStyleSheet)
             except:
                 pass
         if not self.ismousehastext(ev):
@@ -205,7 +223,7 @@ class TextBrowser(QWidget, dataget):
 
     def contentchangedfunction(self):
         sz = self.textbrowser.document().size().toSize()
-        visheight = int(sz.height() + self.extra_height)
+        visheight = sz.height()
         self.textbrowser.resize(self.width(), visheight)
         self.contentsChanged.emit(QSize(sz.width(), visheight + self.labeloffset_y))
 
@@ -270,7 +288,6 @@ class TextBrowser(QWidget, dataget):
         self.lastcolor = None
         self.iteryinyinglabelsave = {}
         self.saveiterclasspointer = {}
-        self.extra_height = 0
         self.cleared = True
 
         self.setAcceptDrops(True)
@@ -524,6 +541,9 @@ class TextBrowser(QWidget, dataget):
         )
         self.cleared = False
 
+    def GetSelectedText(self):
+        return self.textbrowser.textCursor().selectedText()
+
     def setdisplayrank(self, type):
         pass
 
@@ -565,7 +585,7 @@ class TextBrowser(QWidget, dataget):
         if hastag:
             self._setlineheight_x(blockcount, blockcount_after, self._split_tags(tag))
         else:
-            self._setlineheight(blockcount, blockcount_after, texttype)
+            self._setlineheight(blockcount, blockcount_after, texttype, klass)
         self.textbrowser.document().blockSignals(False)
         self.textbrowser.document().contentsChanged.emit()
         if hastag:
@@ -668,13 +688,14 @@ class TextBrowser(QWidget, dataget):
             return False
         return True
 
+    def getlhfordict(self, dic):
+        return 100 * (
+            1 if dic.get("lineHeightNormal", True) else dic.get("lineHeight", 1)
+        )
+
     def _setlineheight_x(self, b1, b2, linetags):
-        fh = globalconfig["extra_space"]
         fha, _ = self._getfh(True)
 
-        self.extra_height = fha
-        if fh < 0:
-            self.extra_height = -fh + self.extra_height
         for i in range(b1, b2):
             _fha = 0
             for word in linetags[i - b1]:
@@ -688,26 +709,31 @@ class TextBrowser(QWidget, dataget):
                 self.atback_color.move(0, int(fha))
             b = self.textbrowser.document().findBlockByNumber(i)
             tf = b.blockFormat()
-            tf.setTopMargin(_fha)
-            tf.setLineHeight(fh, LineHeightTypes.LineDistanceHeight)
+            tf.setTopMargin(_fha + globalconfig["lineheights"]["marginTop"])
+            tf.setLineHeight(
+                self.getlhfordict(globalconfig["lineheights"]),
+                LineHeightTypes.ProportionalHeight,
+            )
+            tf.setBottomMargin(globalconfig["lineheights"]["marginBottom"])
             self.textcursor.setPosition(b.position())
             self.textcursor.setBlockFormat(tf)
             self.textbrowser.setTextCursor(self.textcursor)
 
-    def _setlineheight(self, b1, b2, texttype: TextType):
+    def _setlineheight(self, b1, b2, texttype: TextType, klass: str):
         if texttype == TextType.Origin:
-            fh = globalconfig["extra_space"]
+            fh = globalconfig["lineheights"]
         else:
-            fh = globalconfig["extra_space_trans"]
-        if fh < 0:
-            self.extra_height = -fh
-        else:
-            self.extra_height = 0
+            fh = globalconfig["lineheightstrans"]
+            if klass:
+                data = globalconfig["fanyi"][klass].get("privatefont", {})
+                if not data.get("lineheight_df", True):
+                    fh = data
         for i in range(b1, b2):
             b = self.textbrowser.document().findBlockByNumber(i)
             tf = b.blockFormat()
-            tf.setTopMargin(0)
-            tf.setLineHeight(fh, LineHeightTypes.LineDistanceHeight)
+            tf.setTopMargin(fh.get("marginTop", 0))
+            tf.setLineHeight(self.getlhfordict(fh), LineHeightTypes.ProportionalHeight)
+            tf.setBottomMargin(fh.get("marginBottom", 0))
             self.textcursor.setPosition(b.position())
             self.textcursor.setBlockFormat(tf)
             self.textbrowser.setTextCursor(self.textcursor)
@@ -864,6 +890,7 @@ class TextBrowser(QWidget, dataget):
             ql_1.setStyleSheet("background-color: rgba(0,0,0,0.01);")
             self.searchmasklabels_clicked.append(ql_1)
             ql = Qlabel_c(self.masklabel)
+            ql.ref = ql_1
             ql.setMouseTracking(True)
             ql.setStyleSheet("background-color: rgba(0,0,0,0.01);")
             self.searchmasklabels_clicked2.append(ql)
@@ -1046,3 +1073,10 @@ class TextBrowser(QWidget, dataget):
         self.saveiterclasspointer.clear()
         self.textbrowser.move(0, 0)
         self.atback_color.move(0, 0)
+
+    def sethovercolor(self, color):
+        for _ in reference:
+            try:
+                _.setStyleSheet("background-color: " + color)
+            except:
+                pass

@@ -122,16 +122,19 @@ DECLARE_API bool check_window_viewable(HWND hwnd)
     return IntersectRect(&_, &windowRect, &monitorInfo.rcWork);
 }
 
-DECLARE_API void GetSelectedText(void (*cb)(const wchar_t *))
+DECLARE_API bool GetSelectedText(void (*cb)(const wchar_t *))
 {
-    CO_INIT co;
-    CHECK_FAILURE_NORET(co);
+    bool succ = true;
     try
     {
+        CO_INIT co;
+        if (FAILED(co))
+            throw std::runtime_error("");
         // 初始化 COM
         CComPtr<IUIAutomation> automation;
         if (FAILED(CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation))) || !automation)
         {
+            succ = false;
             throw std::runtime_error("无法初始化 UI Automation.");
         }
 
@@ -146,6 +149,7 @@ DECLARE_API void GetSelectedText(void (*cb)(const wchar_t *))
         CComPtr<IUIAutomationTextPattern> textPattern;
         if (FAILED(focusedElement->GetCurrentPatternAs(UIA_TextPatternId, IID_PPV_ARGS(&textPattern))) || !textPattern)
         {
+            succ = false;
             throw std::runtime_error("当前元素不支持 TextPattern.");
         }
 
@@ -175,6 +179,7 @@ DECLARE_API void GetSelectedText(void (*cb)(const wchar_t *))
     {
         printf(e.what());
     }
+    return succ;
 }
 
 DECLARE_API void *get_allAccess_ptr()
@@ -247,4 +252,53 @@ DECLARE_API bool IsDLLBit64(LPCWSTR file)
     auto is64 = peHdr->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64;
     UnmapViewOfFile(mapAddr);
     return is64;
+}
+
+typedef struct
+{
+    DWORD ExitStatus;
+    DWORD PebBaseAddress;
+    DWORD AffinityMask;
+    DWORD BasePriority;
+    ULONG UniqueProcessId;
+    ULONG InheritedFromUniqueProcessId;
+} PROCESS_BASIC_INFORMATION;
+
+#define ProcessBasicInformation 0
+typedef LONG(__stdcall *PROCNTQSIP)(HANDLE, UINT, PVOID, ULONG, PULONG);
+
+DECLARE_API DWORD GetParentProcessID(DWORD dwProcessId)
+{
+    LONG status;
+    DWORD dwParentPID = (DWORD)-1;
+    PROCESS_BASIC_INFORMATION pbi;
+
+    PROCNTQSIP NtQueryInformationProcess = (PROCNTQSIP)GetProcAddress(
+        GetModuleHandle(L"ntdll"), "NtQueryInformationProcess");
+
+    if (NULL == NtQueryInformationProcess)
+    {
+        return (DWORD)-1;
+    }
+    // Get process handle
+    CHandle hProcess{OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, dwProcessId)};
+    if (!hProcess)
+    {
+        return (DWORD)-1;
+    }
+
+    // Retrieve information
+    status = NtQueryInformationProcess(hProcess,
+                                       ProcessBasicInformation,
+                                       (PVOID)&pbi,
+                                       sizeof(PROCESS_BASIC_INFORMATION),
+                                       NULL);
+
+    // Copy parent Id on success
+    if (!status)
+    {
+        dwParentPID = pbi.InheritedFromUniqueProcessId;
+    }
+
+    return dwParentPID;
 }

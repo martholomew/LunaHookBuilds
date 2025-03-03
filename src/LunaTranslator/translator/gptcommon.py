@@ -58,26 +58,6 @@ def commonparseresponse_good(response: requests.Response):
     return message
 
 
-def parseresponsecohere(response: requests.Response):
-    message = ""
-    for json_data in stream_event_parser(response):
-        try:
-            delta = json_data.get("delta")
-            if not delta:
-                continue
-            if "message" not in delta:
-                continue
-            content = delta["message"]["content"]
-            if not content:
-                continue
-            msg = content["text"]
-        except:
-            raise Exception(json_data)
-        yield msg
-        message += msg
-    return message
-
-
 def parseresponsegemini(response: requests.Response):
     line = ""
     for __x in response.iter_lines(decode_unicode=True):
@@ -120,8 +100,6 @@ def parsestreamresp(apiurl: str, response: requests.Response):
         respmessage = yield from parseresponsegemini(response)
     elif apiurl.startswith("https://api.anthropic.com/v1/messages"):
         respmessage = yield from parseresponseclaude(response)
-    elif apiurl.startswith("https://api.cohere.com/v2/chat"):
-        respmessage = yield from parseresponsecohere(response)
     else:
         respmessage = yield from commonparseresponse_good(response)
     return respmessage
@@ -159,6 +137,23 @@ class qianfanIAM:
         ).json()["token"]
 
 
+def createheaders(apiurl, config, maybeuse, proxy):
+    _ = {}
+    curkey = config["SECRET_KEY"]
+    if curkey:
+        # 部分白嫖接口可以不填，填了反而报错
+        _.update({"Authorization": "Bearer " + curkey})
+    if "openai.azure.com/openai/deployments/" in apiurl:
+        _.update({"api-key": curkey})
+    elif ("qianfan.baidubce.com/v2" in apiurl) and (":" in curkey):
+        if not maybeuse.get(curkey):
+            Access_Key, Secret_Key = curkey.split(":")
+            key = qianfanIAM.getkey(Access_Key, Secret_Key, proxy)
+            maybeuse[curkey] = key
+        _.update({"Authorization": "Bearer " + maybeuse[curkey]})
+    return _
+
+
 class gptcommon(basetrans):
     @property
     def apiurl(self) -> str:
@@ -181,7 +176,7 @@ class gptcommon(basetrans):
             messages=message,
             # optional
             max_tokens=self.config["max_tokens"],
-            n=1,
+            # n=1,
             # stop=None,
             top_p=self.config["top_p"],
             temperature=temperature,
@@ -198,20 +193,9 @@ class gptcommon(basetrans):
         return data
 
     def createheaders(self):
-        _ = {}
-        curkey = self.multiapikeycurrent["SECRET_KEY"]
-        if curkey:
-            # 部分白嫖接口可以不填，填了反而报错
-            _.update({"Authorization": "Bearer " + curkey})
-        if "openai.azure.com/openai/deployments/" in self.apiurl:
-            _.update({"api-key": curkey})
-        elif ("qianfan.baidubce.com/v2" in self.apiurl) and (":" in curkey):
-            if not self.maybeuse.get(curkey):
-                Access_Key, Secret_Key = curkey.split(":")
-                key = qianfanIAM.getkey(Access_Key, Secret_Key, self.proxy)
-                self.maybeuse[curkey] = key
-            _.update({"Authorization": "Bearer " + self.maybeuse[curkey]})
-        return _
+        return createheaders(
+            self.apiurl, self.multiapikeycurrent, self.maybeuse, self.proxy
+        )
 
     def commonparseresponse_good(self, response: requests.Response):
 
@@ -265,8 +249,6 @@ class gptcommon(basetrans):
         self.context.append({"role": "assistant", "content": respmessage})
 
     def createurl(self):
-        if "openai.azure.com/openai/deployments/" in self.apiurl:
-            return self.apiurl
         return createurl(self.apiurl)
 
     def request_gemini(self, sysprompt, query):

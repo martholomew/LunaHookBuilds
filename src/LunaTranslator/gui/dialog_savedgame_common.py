@@ -104,7 +104,7 @@ class tagitem(QFrame):
 def opendirforgameuid(gameuid):
     f = get_launchpath(gameuid)
     f = os.path.dirname(f)
-    if os.path.exists(f) and os.path.isdir(f):
+    if os.path.isdir(f):
         os.startfile(f)
 
 
@@ -243,7 +243,7 @@ def addgamesingle(parent, callback, targetlist):
         idx = targetlist.index(uid)
         response = QMessageBox.question(
             parent,
-            "",
+            "?",
             _TR("游戏已存在，是否重复添加？"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,

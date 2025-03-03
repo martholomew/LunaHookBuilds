@@ -113,6 +113,8 @@ class SearchParam(Structure):
         ("exportModule", c_wchar * 120),
         ("text", c_wchar * 30),
         ("isjithook", c_bool),
+        ("sharememname", c_wchar * 64),
+        ("sharememsize", c_uint64),
     ]
 
 
@@ -162,20 +164,6 @@ class texthook(basetext):
                         return globalconfig[key]
 
             return __shitdict(savehook_new_data[self.gameuid]["hooksetting_private"])
-
-    def tryqueryfromhost(self):
-
-        for i, main_server in enumerate(static_data["main_server"]):
-            try:
-                res = requests.get(
-                    "{main_server}/version_lunahook".format(main_server=main_server),
-                    verify=False,
-                    proxies=getproxy(("update", "lunatranslator")),
-                )
-                res = res.json()
-                return res
-            except:
-                pass
 
     def init(self):
 
@@ -251,6 +239,7 @@ class texthook(basetext):
             DWORD,
             SearchParam,
             c_void_p,
+            c_wchar_p,
         )
         self.Luna_EmbedSettings = LunaHost.Luna_EmbedSettings
         self.Luna_EmbedSettings.argtypes = (
@@ -361,11 +350,18 @@ class texthook(basetext):
                 print_exc()
             time.sleep(0.1)
 
+    @property
+    def gameuid(self):
+        return gobject.baseobject.gameuid
+
+    @gameuid.setter
+    def gameuid(self, gameuid):
+        gobject.baseobject.gameuid = gameuid
+
     def start(self, hwnd, pids, gamepath, gameuid, autostart=False):
         for pid in pids:
             self.waitend(pid)
         gobject.baseobject.hwnd = hwnd
-        gobject.baseobject.gameuid = gameuid
         self.gameuid = gameuid
         self.detachall()
         _filename, _ = os.path.splitext(os.path.basename(gamepath))
@@ -405,6 +401,7 @@ class texthook(basetext):
     def removeproc(self, pid):
         self.pids.remove(pid)
         if len(self.pids) == 0:
+            self.gameuid = 0
             self.autohookmonitorthread()
 
     def start_unsafe(self, pids):
@@ -633,7 +630,7 @@ class texthook(basetext):
         return usestruct
 
     @threader
-    def findhook(self, usestruct):
+    def findhook(self, usestruct, addresses):
         savefound = {}
         pids = self.pids.copy()
         cntref = []
@@ -647,7 +644,9 @@ class texthook(basetext):
         _callback = findhookcallback_t(functools.partial(__callback, cntref))
         self.keepref.append(_callback)
         for pid in pids:
-            self.Luna_FindHooks(pid, usestruct, cast(_callback, c_void_p).value)
+            self.Luna_FindHooks(
+                pid, usestruct, cast(_callback, c_void_p).value, addresses
+            )
 
         while True:
             lastsize = len(cntref)
@@ -661,7 +660,9 @@ class texthook(basetext):
         for pid in self.pids.copy():
             succ = self.Luna_InsertHookCode(pid, hookcode) and succ
         if succ == False:
-            QMessageBox.critical(gobject.baseobject.hookselectdialog, _TR("错误"), _TR("特殊码无效"))
+            QMessageBox.critical(
+                gobject.baseobject.hookselectdialog, _TR("错误"), _TR("特殊码无效")
+            )
 
     @threader
     def delaycollectallselectedoutput(self):

@@ -207,6 +207,7 @@ class ButtonBar(QFrame):
             button.rightclick.connect(functools.partial(callwrap, rightclick))
         if tips:
             button.setToolTip(tips)
+            button.setAccessibleName(tips)
         if _type not in self.stylebuttons:
             self.stylebuttons[_type] = []
         self.stylebuttons[_type].append(button)
@@ -282,6 +283,7 @@ class TranslatorWindow(resizableframeless):
     changeshowhidetranssig = pyqtSignal()
     magpiecallback = pyqtSignal(bool)
     clipboardcallback = pyqtSignal(bool, str)
+    internaltexthide = pyqtSignal(bool)
 
     @threader
     def tracewindowposthread(self):
@@ -434,33 +436,48 @@ class TranslatorWindow(resizableframeless):
         else:
             self.translate_text.append(texttype, name, text, hira, color, klass)
         if globalconfig["autodisappear"]:
-            flag = (globalconfig["showintab"] and self.isMinimized()) or (
-                not globalconfig["showintab"] and self.isHidden()
-            )
-
-            if flag:
-                self.show_()
             self.lastrefreshtime = time.time()
             self.autohidestart = True
+            if globalconfig["autodisappear_which"] == 0:
+                flag = (globalconfig["showintab"] and self.isMinimized()) or (
+                    not globalconfig["showintab"] and self.isHidden()
+                )
+                if flag:
+                    self.show_()
+            elif globalconfig["autodisappear_which"] == 1:
+                if globalconfig["disappear_delay"] == 0:
+                    if self.isMouseHover:
+                        self.translate_text.textbrowser.setVisible(True)
+                else:
+                    self.translate_text.textbrowser.setVisible(True)
+
+    @property
+    def isMouseHover(self):
+        # 当鼠标悬停，或前景窗口为当前进程的其他窗口时，返回真
+        return self.geometry().contains(QCursor.pos()) or (
+            windows.GetForegroundWindow() != self.winid
+            and windows.GetWindowThreadProcessId(windows.GetForegroundWindow())
+            == os.getpid()
+        )
 
     @threader
     def autohidedelaythread(self):
         while True:
             time.sleep(0.5)
             # 当鼠标悬停，或前景窗口为当前进程的其他窗口时，禁止自动隐藏
-            if self.geometry().contains(QCursor.pos()) or (
-                windows.GetForegroundWindow() != self.winid
-                and windows.GetWindowThreadProcessId(windows.GetForegroundWindow())
-                == os.getpid()
-            ):
+            if self.isMouseHover:
                 self.lastrefreshtime = time.time()
                 continue
-            if globalconfig["autodisappear"] and self.autohidestart:
-                if (
+            if globalconfig["autodisappear"]:
+                if self.autohidestart and (
                     time.time() - self.lastrefreshtime
                     >= globalconfig["disappear_delay"]
                 ):
-                    self.hidesignal.emit()
+                    if globalconfig["autodisappear_which"] == 0:
+
+                        self.hidesignal.emit()
+                    elif globalconfig["autodisappear_which"] == 1:
+                        self.internaltexthide.emit(False)
                     self.autohidestart = False
 
     def showhideui(self):
@@ -587,14 +604,13 @@ class TranslatorWindow(resizableframeless):
             ("history", lambda: gobject.baseobject.transhis.showsignal.emit()),
             (
                 "noundict",
-                lambda: loadpostsettingwindowmethod("noundict")(
-                    gobject.baseobject.commonstylebase
-                ),
-            ),
-            (
-                "noundict_2",
                 lambda: loadpostsettingwindowmethod_maybe(
                     "noundict", gobject.baseobject.commonstylebase
+                ),
+                None,
+                None,
+                lambda: loadpostsettingwindowmethod("noundict")(
+                    gobject.baseobject.commonstylebase
                 ),
             ),
             (
@@ -602,17 +618,21 @@ class TranslatorWindow(resizableframeless):
                 lambda: loadpostsettingwindowmethod_maybe(
                     "vndbnamemap", gobject.baseobject.commonstylebase
                 ),
-            ),
-            (
-                "fix",
-                lambda: loadpostsettingwindowmethod("transerrorfix")(
+                None,
+                None,
+                lambda: loadpostsettingwindowmethod("vndbnamemap")(
                     gobject.baseobject.commonstylebase
                 ),
             ),
             (
-                "fix_2",
+                "fix",
                 lambda: loadpostsettingwindowmethod_maybe(
                     "transerrorfix", gobject.baseobject.commonstylebase
+                ),
+                None,
+                None,
+                lambda: loadpostsettingwindowmethod("transerrorfix")(
+                    gobject.baseobject.commonstylebase
                 ),
             ),
             (
@@ -639,6 +659,7 @@ class TranslatorWindow(resizableframeless):
                 self.changetoolslockstate,
                 lambda: globalconfig["locktools"],
                 lambda: globalconfig["locktools"],
+                self.changetoolslockstateEx,
             ),
             (
                 "gamepad_new",
@@ -672,7 +693,7 @@ class TranslatorWindow(resizableframeless):
                 None,
                 lambda: self.isbindedwindow,
             ),
-            ("searchwordW", lambda: gobject.baseobject.searchwordW.showsignal.emit()),
+            ("searchwordW", self.callopensearchwordwindow),
             (
                 "fullscreen",
                 lambda: self._fullsgame(False),
@@ -690,6 +711,9 @@ class TranslatorWindow(resizableframeless):
             (
                 "memory",
                 lambda: dialog_memory(gobject.baseobject.commonstylebase),
+                None,
+                None,
+                lambda: dialog_memory(gobject.baseobject.commonstylebase, True),
             ),
             (
                 "keepontop",
@@ -747,6 +771,7 @@ class TranslatorWindow(resizableframeless):
                 self.setselectable,
                 None,
                 lambda: globalconfig["selectable"],
+                self.setselectableEx,
             ),
         )
 
@@ -776,6 +801,13 @@ class TranslatorWindow(resizableframeless):
                 iconstate,
                 colorstate,
             )
+
+    def callopensearchwordwindow(self):
+        curr = self.translate_text.GetSelectedText()
+        if curr:
+            gobject.baseobject.searchwordW.search_word.emit(curr, False)
+        else:
+            gobject.baseobject.searchwordW.showsignal.emit()
 
     @property
     def winid(self):
@@ -879,6 +911,7 @@ class TranslatorWindow(resizableframeless):
 
     def initvalues(self):
         self.enter_sig = 0
+        self.lastrefreshtime = time.time()
         self.fullscreenmanager_busy = threading.Lock()
         self.isletgamefullscreened = False
         self.showhidestate = False
@@ -936,10 +969,20 @@ class TranslatorWindow(resizableframeless):
 
         self.muteprocessignal.connect(self.muteprocessfuntion)
         self.toolbarhidedelaysignal.connect(self.toolbarhidedelay)
-        self.move_signal.connect(self.move)
+        self.move_signal.connect(self.safemove)
         self.closesignal.connect(self.close)
         self.changeshowhiderawsig.connect(self.changeshowhideraw)
         self.changeshowhidetranssig.connect(self.changeshowhidetrans)
+        self.internaltexthide.connect(
+            lambda _: self.translate_text.textbrowser.setVisible(_)
+        )
+
+    def safemove(self, pos: QPoint):
+        if pos.x() < 0:
+            return
+        if pos.y() < 0:
+            return
+        self.move(pos)
 
     def __init__(self):
         flags = (
@@ -1016,8 +1059,17 @@ class TranslatorWindow(resizableframeless):
         self.autohidedelaythread()
         self.tracewindowposthread()
 
-    def setselectable(self):
+    def setselectableEx(self):
+        globalconfig["selectableEx"] = True
+        try:
+            gobject.baseobject.settin_ui.selectable_btn.clicksignal.emit()
+        except:
+            globalconfig["selectable"] = not globalconfig["selectable"]
+            self.translate_text.setselectable(globalconfig["selectable"])
+            self.refreshtoolicon()
 
+    def setselectable(self):
+        globalconfig["selectableEx"] = False
         try:
             gobject.baseobject.settin_ui.selectable_btn.clicksignal.emit()
         except:
@@ -1113,6 +1165,19 @@ class TranslatorWindow(resizableframeless):
     @property
     def mousetranscheckrect(self):
         btn: QWidget = self.titlebar.buttons["mousetransbutton"]
+        usegeo = btn.geometry()
+        usegeo = QRect(
+            usegeo.x() - usegeo.width(),
+            usegeo.y(),
+            usegeo.width() * 3,
+            usegeo.height(),
+        )
+        usegeo = usegeo.intersected(self.rect())
+        return usegeo
+
+    @property
+    def locktoolsExcheckrect(self):
+        btn: QWidget = self.titlebar.buttons["locktoolsbutton"]
         usegeo = btn.geometry()
         usegeo = QRect(
             usegeo.x() - usegeo.width(),
@@ -1223,7 +1288,16 @@ class TranslatorWindow(resizableframeless):
         globalconfig["autorun"] = not globalconfig["autorun"]
         self.refreshtoolicon()
 
+    def changetoolslockstateEx(self):
+        globalconfig["locktoolsEx"] = True
+        try:
+            gobject.baseobject.settin_ui.locktoolsbutton.clicksignal.emit()
+        except:
+            globalconfig["locktools"] = not globalconfig["locktools"]
+            self.refreshtoolicon()
+
     def changetoolslockstate(self):
+        globalconfig["locktoolsEx"] = False
         try:
             gobject.baseobject.settin_ui.locktoolsbutton.clicksignal.emit()
         except:
@@ -1332,6 +1406,13 @@ class TranslatorWindow(resizableframeless):
             usegeo = self.mousetranscheckrect
         return usegeo.contains(self.mapFromGlobal(QCursor.pos()))
 
+    def checklocktoolsEx(self):
+        usegeo = self.titlebar.geometry()
+        btn: QWidget = self.titlebar.buttons["locktoolsbutton"]
+        if (not btn.isVisible()) and (btn.reflayout is not None):
+            usegeo = self.locktoolsExcheckrect
+        return usegeo.contains(self.mapFromGlobal(QCursor.pos()))
+
     def __betterenterevent(self):
         if self._isentered:
             return
@@ -1368,7 +1449,11 @@ class TranslatorWindow(resizableframeless):
         self.toolbarhidedelaysignal.emit()
 
     def enterfunction(self, delay=None):
-        self.titlebar.show()
+        if (not globalconfig["locktoolsEx"]) or self.checklocktoolsEx():
+            self.titlebar.show()
+        self.translate_text.textbrowser.setVisible(True)
+        self.autohidestart = True
+        self.lastrefreshtime = time.time()
         self.set_color_transparency()
         self.dodelayhide(delay)
 

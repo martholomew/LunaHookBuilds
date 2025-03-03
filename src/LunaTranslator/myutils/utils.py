@@ -742,6 +742,11 @@ class loopbackrecorder:
     def __init__(self):
         self.capture = winsharedutils.loopbackrecorder()
 
+    def stop(self):
+        if not self.capture:
+            return None
+        self.capture.stop()
+
     def stop_save(self):
         if not self.capture:
             return None
@@ -816,7 +821,7 @@ def urlpathjoin(*argc):
 
 
 def createurl(url: str, checkend="/chat/completions"):
-    if url == "https://api.cohere.com/v2/chat":
+    if "openai.azure.com/openai/deployments/" in url:
         return url
     if url.endswith(checkend):
         pass
@@ -885,7 +890,7 @@ def parseclaudemodellist(proxies, apikey):
 def common_list_models(proxies, apiurl: str, apikey: str, checkend="/chat/completions"):
     apiurl = apiurl.strip()
     apikey = apikey.strip()
-    if apiurl.startswith("https://api.cohere.com/v2/chat"):
+    if apiurl.startswith("https://api.cohere."):
         return parsecoheremodellist(proxies, apikey)
     elif apiurl.startswith("https://generativelanguage.googleapis.com"):
         return parsegeminimodellist(proxies, apikey)
@@ -909,9 +914,7 @@ def common_list_models(proxies, apiurl: str, apikey: str, checkend="/chat/comple
 
 def common_parse_normal_response(response: requests.Response, apiurl: str):
     try:
-        if apiurl.startswith("https://api.cohere.com/v2/chat"):
-            return response.json()["message"]["content"][0]["text"]
-        elif apiurl.startswith("https://api.anthropic.com/v1/messages"):
+        if apiurl.startswith("https://api.anthropic.com/v1/messages"):
             return response.json()["content"][0]["text"]
         elif apiurl.startswith("https://generativelanguage.googleapis.com"):
             return response.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -1004,6 +1007,10 @@ def getimageformatlist():
     if globalconfig["imageformat"] == -1 or globalconfig["imageformat"] >= len(_):
         globalconfig["imageformat"] = _.index("png")
     return _
+
+
+def getimageformat():
+    return getimageformatlist()[globalconfig["imageformat"]]
 
 
 def getimagefilefilter():

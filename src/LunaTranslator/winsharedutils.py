@@ -240,6 +240,8 @@ _crop_image.argtypes = HWND, RECT, c_void_p
 
 
 def gdi_screenshot(hwnd):
+    if windows.GetClassName(hwnd) == "UnityWndClass":
+        return None
     ret = []
 
     def cb(ptr, size):
@@ -262,6 +264,8 @@ def crop_image(x1, y1, x2, y2, hwnd=None):
     def cb(ptr, size):
         ret.append(cast(ptr, POINTER(c_char))[:size])
 
+    if windows.GetClassName(hwnd) == "UnityWndClass":
+        hwnd = None
     _crop_image(hwnd, rect, CFUNCTYPE(None, c_void_p, c_size_t)(cb))
     if len(ret) == 0:
         return None
@@ -297,12 +301,13 @@ html_get_current_url = utilsdll.html_get_current_url
 html_get_current_url.argtypes = (MSHTMLptr, c_void_p)
 html_set_html = utilsdll.html_set_html
 html_set_html.argtypes = (MSHTMLptr, c_wchar_p)
+html_add_menu_gettext = CFUNCTYPE(c_wchar_p)
 html_add_menu = utilsdll.html_add_menu
 html_add_menu_cb = CFUNCTYPE(c_void_p, c_wchar_p)
-html_add_menu.argtypes = (MSHTMLptr, c_int, c_wchar_p, c_void_p)
+html_add_menu.argtypes = (MSHTMLptr, c_int, c_void_p, c_void_p)
 html_add_menu_noselect = utilsdll.html_add_menu_noselect
 html_add_menu_cb2 = CFUNCTYPE(c_void_p)
-html_add_menu_noselect.argtypes = (MSHTMLptr, c_int, c_wchar_p, c_void_p)
+html_add_menu_noselect.argtypes = (MSHTMLptr, c_int, c_void_p, c_void_p)
 html_get_select_text = utilsdll.html_get_select_text
 html_get_select_text_cb = CFUNCTYPE(None, c_wchar_p)
 html_get_select_text.argtypes = (MSHTMLptr, c_void_p)
@@ -336,10 +341,11 @@ webview2_add_menu_noselect = utilsdll.webview2_add_menu_noselect
 webview2_add_menu_noselect_CALLBACK = CFUNCTYPE(None)
 webview2_add_menu_noselect_getchecked = CFUNCTYPE(c_bool)
 webview2_add_menu_noselect_getuse = CFUNCTYPE(c_bool)
+webview2_contextmenu_gettext = CFUNCTYPE(c_wchar_p)
 webview2_add_menu_noselect.argtypes = (
     WebView2PTR,
     c_int,
-    c_wchar_p,
+    c_void_p,
     c_void_p,
     c_bool,
     c_void_p,
@@ -350,7 +356,7 @@ webview2_add_menu_CALLBACK = CFUNCTYPE(None, c_wchar_p)
 webview2_add_menu.argtypes = (
     WebView2PTR,
     c_int,
-    c_wchar_p,
+    c_void_p,
     c_void_p,
 )
 webview2_evaljs = utilsdll.webview2_evaljs
@@ -459,14 +465,17 @@ check_window_viewable.argtypes = (HWND,)
 check_window_viewable.restype = c_bool
 _GetSelectedText = utilsdll.GetSelectedText
 _GetSelectedText.argtypes = (c_void_p,)
+_GetSelectedText.restype = c_bool
 
 
 def GetSelectedText():
     ret = []
-    _GetSelectedText(CFUNCTYPE(None, c_wchar_p)(ret.append))
+    support = _GetSelectedText(CFUNCTYPE(None, c_wchar_p)(ret.append))
+    if not support:
+        return None
     if len(ret):
         return ret[0]
-    return None
+    return ""
 
 
 get_allAccess_ptr = utilsdll.get_allAccess_ptr
@@ -592,3 +601,10 @@ IsDLLBit64.restype = c_bool
 
 CreateShortcut = utilsdll.CreateShortcut
 CreateShortcut.argtypes = LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR
+
+str_alloc = utilsdll.str_alloc
+str_alloc.argtypes = (c_wchar_p,)
+str_alloc.restype = c_void_p
+GetParentProcessID = utilsdll.GetParentProcessID
+GetParentProcessID.argtypes = (DWORD,)
+GetParentProcessID.restype = DWORD

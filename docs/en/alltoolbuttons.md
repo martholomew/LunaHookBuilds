@@ -59,7 +59,9 @@ Some buttons have two icons to indicate two different states. Some buttons only 
     The function of this button is to switch the opacity of the translation window to 0 with one click. This switch will not cause the original opacity settings to be forgotten.
     
 1. #### <i class="fa fa-lock"></i> <i class="btnstatus2 fa fa-unlock"></i> Lock Toolbar
-    When the toolbar is not locked, it will automatically hide when the mouse moves out; after activation, the toolbar will always be displayed.
+    After activation, the toolbar will always be displayed.
+
+    When the toolbar is not locked, it will automatically hide when the mouse moves away, and it will reappear when the mouse enters the window. If the toolbar lock was canceled using the right mouse button, the toolbar will only reappear when the mouse enters the **area of the lock toolbar button and its adjacent buttons on either side**.
 
     When the toolbar is not locked, if `Mouse Through Window` is activated, the toolbar will only be displayed when the mouse moves to the **area of the Mouse Through Window button and one button to the left and right**; otherwise, as long as the mouse enters the translation window, the toolbar will be displayed.
 
@@ -95,13 +97,13 @@ Some buttons have two icons to indicate two different states. Some buttons only 
     After using `Perform OCR Once`, use this button to perform OCR again at the original location without having to re-select the recognition area.
     
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Proper Noun Translation_Direct Replacement
-1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Proper Noun Translation_Global
 1. #### <i class="fa fa-book"></i> <i class="fa fa-icon fa-rotate-right"></i> Proper Noun Translation
-1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> Translation Result Correction_Global
 1. #### <i class="fa fa-won"></i> <i class="fa fa-icon fa-rotate-right"></i> Translation Result Correction
-    The above five buttons have similar effects and are used to quickly open the translation optimization settings window to add new specified terms.
+    The above three buttons have similar effects and are used to quickly open the translation optimization settings window to add new specified terms.
 
-    For `Global`, it will definitely open the global dictionary settings. For non-`Global`, when there is a bound game (HOOK linked game/clipboard, OCR bound window), it will open the game's dedicated dictionary settings, otherwise it will open the global dictionary settings.
+    When left-clicking the mouse, if there is a bound game (HOOK linked game/clipboard, OCR bound window), it opens the dedicated dictionary settings for the game. Otherwise, it opens the global dictionary settings.
+
+    When right-clicking the mouse, it always opens the global dictionary settings.
 1. #### <i class="fa fa-minus"></i> <i class="fa fa-icon fa-rotate-right"></i> Minimize to Tray
     N/A
 1. #### <i class="fa fa-times"></i> <i class="fa fa-icon fa-rotate-right"></i> Exit
@@ -154,9 +156,9 @@ Some buttons have two icons to indicate two different states. Some buttons only 
 1. #### <i class="fa fa-download"></i> <i class="fa fa-icon fa-rotate-right"></i> Simulate Key Press Enter
     As above, it is used to send a simulated key press to the game window. It has some effect when using streaming/tablet.
 1. #### <i class="fa fa-list-ul"></i> <i class="fa fa-icon fa-rotate-right"></i> Memo
-    Open the memo window for the game you are currently playing. Each game has a separate memo file.
-
-    It can be used to temporarily write some notes, or copy the strategy into it to read and delete as you play, which is very convenient. It saves the trouble of opening a web page/separately opening a txt file, very practical.
+    Open the memo window for the game you are currently playing. 
+    
+    When you click the left button, the memo for the current game is opened. When you click the right button, the global memo is opened.
 1. #### <i class="fab fa-windows"></i> <i class="btnstatus2 fab fa-windows"></i> Bind Window (Some software does not support) (Click to cancel)
     **This button is very important, many features depend on this button to be set first before they can be used**
 
@@ -171,6 +173,8 @@ Some buttons have two icons to indicate two different states. Some buttons only 
 1. #### <i class="fa fa-neuter"></i> <i class="btnstatus2 fa fa-neuter"></i> Always on Top
     Cancel/Always on Top translation window
 1. #### <i class="fa fa-i-cursor"></i> <i class="btnstatus2 fa fa-i-cursor"></i> Selectable
-    Make the text in the translation window's text area selectable. When selectable is activated, you cannot drag in the text area but can only drag the toolbar (because dragging is for selecting text)
+    Make the text in the translation window's text area selectable.
+    
+    If the right mouse button is clicked when activated, dragging non-text areas to move the window will also be prohibited.
 1. #### <i class="fa fa-search"></i> <i class="fa fa-icon fa-rotate-right"></i> Look Up
-    Open the look-up window.
+    If there is currently text selected, the selected text will be queried and a word search window will be opened. Otherwise, it will only open or close the keyword search window.

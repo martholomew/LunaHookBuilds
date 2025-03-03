@@ -27,7 +27,7 @@ class TextBrowser(WebviewWidget, dataget):
         self.setMouseTracking(True)
         nexti = self.add_menu(
             0,
-            _TR("查词"),
+            lambda: _TR("查词"),
             threader(
                 lambda w: gobject.baseobject.searchwordW.search_word.emit(
                     w.replace("\n", "").strip(), False
@@ -36,15 +36,15 @@ class TextBrowser(WebviewWidget, dataget):
         )
         nexti = self.add_menu(
             nexti,
-            _TR("翻译"),
+            lambda: _TR("翻译"),
             lambda w: gobject.baseobject.textgetmethod(w.replace("\n", "").strip()),
         )
         nexti = self.add_menu(
             nexti,
-            _TR("朗读"),
+            lambda: _TR("朗读"),
             lambda w: gobject.baseobject.read_text(w.replace("\n", "").strip()),
         )
-        self.add_menu_noselect(0, _TR("清空"), self.___cleartext)
+        self.add_menu_noselect(0, lambda: _TR("清空"), self.___cleartext)
         self.bind("calllunaclickedword", gobject.baseobject.clickwordcallback)
         self.bind("calllunaMouseMove", self.calllunaMouseMove)
         self.bind("calllunaMousePress", self.calllunaMousePress)
@@ -86,6 +86,7 @@ class TextBrowser(WebviewWidget, dataget):
         self.showhidert(globalconfig["isshowhira"])
         self.setfontstyle()
         self.setdisplayrank(globalconfig["displayrank"])
+        self.sethovercolor(globalconfig["hovercolor"])
         self.parent().refreshcontent()
 
     def refreshcontent_before(self):
@@ -238,6 +239,9 @@ class TextBrowser(WebviewWidget, dataget):
         )
         QApplication.sendEvent(self, event)
 
+    def sethovercolor(self, color):
+        self.debugeval('sethovercolor("{}")'.format(quote(color)))
+
     def calllunaEnter(self):
         QApplication.sendEvent(self.window(), QEvent(QEvent.Type.Enter))
 
@@ -257,6 +261,8 @@ class TextBrowser(WebviewWidget, dataget):
         QApplication.sendEvent(self, event)
 
     def calllunaMouseMove(self, x, y):
+        if globalconfig["selectable"] and globalconfig["selectableEx"]:
+            return
         pos = self.parsexyaspos(x, y)
         event = QMouseEvent(
             QEvent.Type.MouseMove,
@@ -273,15 +279,20 @@ class TextBrowser(WebviewWidget, dataget):
 
     # native api end
     def setfontstyle(self):
+        def updateextra(args: dict, lhdict: dict):
+            if lhdict:
+                args.update(
+                    lineHeight=lhdict.get("lineHeight", 0),
+                    lineHeightNormal=lhdict.get("lineHeightNormal", True),
+                    marginTop=lhdict.get("marginTop", 0),
+                    marginBottom=lhdict.get("marginBottom", 0),
+                )
 
-        def loadfont(argc, extra):
+        def loadfont(argc, lhdict=None):
             fm, fs, bold = argc
-            return dict(
-                fontFamily=fm,
-                fontSize=fs,
-                bold=bold,
-                extra=extra,
-            )
+            args = dict(fontFamily=fm, fontSize=fs, bold=bold)
+            updateextra(args, lhdict)
+            return args
 
         extra = {}
         for klass, data in self.ts_klass.items():
@@ -292,14 +303,16 @@ class TextBrowser(WebviewWidget, dataget):
                 klassextra["fontSize"] = data["fontsize"]
             if (not data.get("showbold_df", True)) and ("showbold" in data):
                 klassextra["bold"] = data["showbold"]
+            if not data.get("lineheight_df", True):
+                updateextra(klassextra, data)
             extra[klass] = klassextra
         origin = loadfont(
-            self._getfontinfo(TextType.Origin), globalconfig["extra_space"]
+            self._getfontinfo(TextType.Origin), globalconfig["lineheights"]
         )
         trans = loadfont(
-            self._getfontinfo(TextType.Translate), globalconfig["extra_space_trans"]
+            self._getfontinfo(TextType.Translate), globalconfig["lineheightstrans"]
         )
-        hira = (loadfont(self._getfontinfo_kana(), 0),)
+        hira = loadfont(self._getfontinfo_kana())
         args = dict(origin=origin, trans=trans, hira=hira, extra=extra)
         args = quote(json.dumps(args))
         self.debugeval('setfontstyle("{}");'.format(args))
@@ -404,3 +417,9 @@ class TextBrowser(WebviewWidget, dataget):
 
         self.clear_all()
         self.saveiterclasspointer.clear()
+
+    def GetSelectedText(self):
+        ret = []
+        self.eval("getCleanSelectionText()", ret.append)
+        if ret:
+            return json.loads(ret[0])

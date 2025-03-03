@@ -1,36 +1,20 @@
 from qtsymbols import *
-import os, functools, uuid, threading, shutil, time
+import os, functools, uuid, threading
 from traceback import print_exc
-import gobject
 from myutils.config import (
     savehook_new_list,
     savehook_new_data,
     savegametaged,
     get_launchpath,
     extradatas,
-    _TR,
     globalconfig,
 )
 from myutils.hwnd import clipboard_set_image
-from myutils.utils import (
-    get_time_stamp,
-    loopbackrecorder,
-    getimagefilefilter,
-    targetmod,
-)
-from myutils.audioplayer import playonce
+from myutils.utils import get_time_stamp, getimagefilefilter, targetmod
 from gui.inputdialog import autoinitdialog
 from gui.specialwidget import stackedlist, shrinkableitem, shownumQPushButton
-from gui.usefulwidget import (
-    pixmapviewer,
-    IconButton,
-    makesubtab_lazy,
-    tabadd_lazy,
-    listediter,
-)
-from gui.dialog_savedgame_setting import (
-    dialog_setting_game_internal,
-)
+from gui.usefulwidget import pixmapviewer, makesubtab_lazy, tabadd_lazy, listediter
+from gui.dialog_savedgame_setting import dialog_setting_game_internal
 from gui.dialog_savedgame_common import (
     getalistname,
     startgamecheck,
@@ -346,7 +330,6 @@ class hoverbtn(LLabel):
 class viewpixmap_x(QWidget):
     tolastnext = pyqtSignal(int)
     startgame = pyqtSignal()
-    switchstop = pyqtSignal()
 
     def sizeHint(self):
         return QSize(400, 400)
@@ -355,102 +338,12 @@ class viewpixmap_x(QWidget):
         super().__init__(parent)
         self.pixmapviewer = pixmapviewer(self)
         self.pixmapviewer.tolastnext.connect(self.tolastnext)
-        self.maybehavecomment = hoverbtn(self)
         self.bottombtn = hoverbtn("开始游戏", self)
         self.bottombtn.clicked.connect(self.startgame)
-        self.maybehavecomment.clicked.connect(self.viscomment)
-        self.commentedit = QPlainTextEdit(self)
-        self.commentedit.textChanged.connect(self.changecommit)
-        self.centerwidget = QWidget(self)
-        self.centerwidgetlayout = QVBoxLayout(self.centerwidget)
-        audio = QHBoxLayout()
-        self.recordbtn = IconButton(icon=["fa.microphone", "fa.stop"], checkable=True)
-        self.recordbtn.clicked.connect(self.startorendrecord)
-        self.centerwidgetlayout.addWidget(self.commentedit)
-        self.centerwidgetlayout.addLayout(audio)
-        audio.addWidget(self.recordbtn)
-        self.btnplay = IconButton(icon=["fa.play", "fa.stop"], checkable=True)
-        audio.addWidget(self.btnplay)
-        self.btnplay.clicked.connect(self.playorstop)
-        gobject.baseobject.hualang_recordbtn = self.recordbtn
-        self.centerwidget.setVisible(False)
         self.pathview = fadeoutlabel(self)
         self.infoview = fadeoutlabel(self)
         self.infoview.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.currentimage = None
-        self.play_context = None
-        self.recorder = None
-        self.switchstop.connect(self.switchstop_f)
-        self.maybehavecomment.raise_()
-
-    def switchstop_f(self):
-        if self.play_context:
-            self.btnplay.click()
-
-    def checkplayable(self):
-        if not self.currentimage:
-            return False
-        mp3 = extradatas.get("imagerefmp3", {}).get(self.currentimage, None)
-        if mp3 is None:
-            return False
-        if not os.path.exists(mp3):
-            return False
-        return True
-
-    def playorstop(self, check):
-        if not self.checkplayable():
-            return
-        mp3 = extradatas["imagerefmp3"][self.currentimage]
-        if check:
-            self.play_context = playonce(mp3, globalconfig["ttscommon"]["volume"])
-            self.sigtime = time.time()
-
-            def __(tm):
-                while self.play_context and self.play_context.isplaying:
-                    time.sleep(1)
-                if self.sigtime == tm:
-                    self.switchstop.emit()
-
-            threading.Thread(target=__, args=(self.sigtime,)).start()
-        else:
-            if not self.play_context:
-                return
-            self.play_context = None
-
-    def startorendrecord(self, check):
-        if not self.currentimage:
-            return
-        if check:
-            if self.play_context:
-                self.btnplay.click()
-            self.btnplay.setEnabled(False)
-            try:
-                self.recorder = loopbackrecorder()
-            except Exception as e:
-                self.recorder = None
-                QMessageBox.critical(self, _TR("错误"), str(e))
-                self.recordbtn.click()
-        else:
-            if not self.recorder:
-                return
-            self.btnplay.setEnabled(False)
-            file = self.recorder.stop_save()
-            self.recorder = None
-            if file:
-                tgt = (
-                    extradatas["localedpath"].get(self.currentimage, self.currentimage)
-                    + os.path.splitext(file)[1]
-                )
-                shutil.copy(file, tgt)
-                extradatas["imagerefmp3"][self.currentimage] = tgt
-
-            self.btnplay.setEnabled(self.checkplayable())
-
-    def changecommit(self):
-        extradatas["imagecomment"][self.currentimage] = self.commentedit.toPlainText()
-
-    def viscomment(self):
-        self.centerwidget.setVisible(not self.centerwidget.isVisible())
 
     def resizeEvent(self, e: QResizeEvent):
         self.pixmapviewer.resize(e.size())
@@ -462,34 +355,21 @@ class viewpixmap_x(QWidget):
             3 * e.size().width() // 5,
             3 * e.size().height() // 10,
         )
-        self.maybehavecomment.setGeometry(
-            e.size().width() // 5, 0, 3 * e.size().width() // 5, e.size().height() // 10
-        )
-        self.centerwidget.setGeometry(
-            e.size().width() // 5,
-            e.size().height() // 10,
-            3 * e.size().width() // 5,
-            3 * e.size().height() // 5,
-        )
         super().resizeEvent(e)
 
     def changepixmappath(self, path):
-        if self.recorder:
-            self.recordbtn.click()
-        if self.play_context:
-            self.btnplay.click()
 
         self.currentimage = path
-        self.centerwidget.setVisible(False)
         self.pathview.setText(path)
         try:
+            if not os.path.isfile(extradatas["localedpath"].get(path, path)):
+                raise Exception()
             timestamp = get_time_stamp(
                 ct=os.path.getctime(extradatas["localedpath"].get(path, path)), ms=False
             )
         except:
             timestamp = None
         self.infoview.setText(timestamp)
-        self.commentedit.setPlainText(extradatas.get("imagecomment", {}).get(path, ""))
         if not path:
             pixmap = QPixmap()
         else:
@@ -497,7 +377,6 @@ class viewpixmap_x(QWidget):
                 QImage(extradatas["localedpath"].get(path, path))
             )
         self.pixmapviewer.showpixmap(pixmap)
-        self.btnplay.setEnabled(self.checkplayable())
 
 
 class pixwrapper(QWidget):

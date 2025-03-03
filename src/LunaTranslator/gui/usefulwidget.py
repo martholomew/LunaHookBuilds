@@ -4,7 +4,7 @@ from traceback import print_exc
 import windows, qtawesome, winsharedutils, gobject, platform, threading
 from myutils.config import _TR, globalconfig
 from myutils.wrapper import Singleton_close, threader
-from myutils.utils import nowisdark, checkisusingwine
+from myutils.utils import nowisdark, checkisusingwine, getimagefilefilter
 from ctypes import POINTER, cast, c_char
 from gui.dynalang import (
     LLabel,
@@ -467,15 +467,11 @@ def disablecolor(__: QColor):
     return __
 
 
-class MySwitch(QWidget):
-    clicked = pyqtSignal(bool)
+class MySwitch(QAbstractButton):
     clicksignal = pyqtSignal()
 
     def event(self, a0: QEvent) -> bool:
         if a0.type() == QEvent.Type.MouseButtonDblClick:
-            return True
-        elif a0.type() == QEvent.Type.EnabledChange:
-            self.setEnabled(not self.isEnabled())
             return True
         elif a0.type() == QEvent.Type.FontChange:
             self.__loadsize()
@@ -486,13 +482,11 @@ class MySwitch(QWidget):
         sz = QSizeF(1.62 * h * gobject.Consts.btnscale, h * gobject.Consts.btnscale)
         self.setFixedSize(sz.toSize())
 
-    def click(self):
-        self.setChecked(not self.checked)
-        self.clicked.emit(self.checked)
-
     def __init__(self, parent=None, sign=True, enable=True):
         super().__init__(parent)
-        self.checked = sign
+        self.setCheckable(True)
+        super().setChecked(sign)
+        super().setEnabled(enable)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.clicksignal.connect(self.click)
         self.__currv = 0
@@ -505,23 +499,16 @@ class MySwitch(QWidget):
         self.animation.setEndValue(20)
         self.animation.valueChanged.connect(self.update11)
         self.animation.finished.connect(self.onAnimationFinished)
-        self.enable = enable
         self.__loadsize()
 
-    def setEnabled(self, enable):
-        self.enable = enable
-        self.update()
-
-    def isEnabled(self):
-        return self.enable
-
-    def isChecked(self):
-        return self.checked
+    def click(self):
+        super().click()
+        self.runanime()
 
     def setChecked(self, check):
-        if check == self.checked:
+        if check == self.isChecked():
             return
-        self.checked = check
+        super().setChecked(check)
         self.runanime()
 
     def update11(self):
@@ -531,7 +518,7 @@ class MySwitch(QWidget):
     def runanime(self):
         self.animation.setDirection(
             QVariantAnimation.Direction.Forward
-            if self.checked
+            if self.isChecked()
             else QVariantAnimation.Direction.Backward
         )
         self.animation.start()
@@ -540,10 +527,10 @@ class MySwitch(QWidget):
 
         __ = QColor(
             [gobject.Consts.buttoncolor_disable, gobject.Consts.buttoncolor][
-                self.checked
+                self.isChecked()
             ]
         )
-        if not self.enable:
+        if not self.isEnabled():
             __ = disablecolor(__)
         return __
 
@@ -581,14 +568,14 @@ class MySwitch(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         self.paintanime(painter)
 
-    def mouseReleaseEvent(self, event) -> None:
-        if not self.enable:
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if not self.isEnabled():
             return
         if event.button() != Qt.MouseButton.LeftButton:
             return
         try:
-            self.checked = not self.checked
-            self.clicked.emit(self.checked)
+            self.setChecked(not self.isChecked())
+            self.clicked.emit(self.isChecked())
             self.runanime()
             # 父窗口deletelater
         except:
@@ -1089,13 +1076,23 @@ class abstractwebview(QWidget):
     def navigate(self, url):
         pass
 
-    def add_menu(self, index=0, label=None, callback=None):
+    def wrapgetlabel(self, getlabel):
+        if not getlabel:
+            return
+
+        def __(f):
+            _ = f()
+            return winsharedutils.str_alloc(_)
+
+        return functools.partial(__, getlabel)
+
+    def add_menu(self, index=0, getlabel=None, callback=None):
         return index + 1
 
     def add_menu_noselect(
         self,
         index=0,
-        label=None,
+        getlabel=None,
         callback=None,
         checkable=False,
         getchecked=None,
@@ -1313,11 +1310,11 @@ class Exteditor(LDialog):
         edges = os.path.join(
             os.environ["LOCALAPPDATA"], r"Microsoft\Edge\User Data\Default\Extensions"
         )
-        if os.path.exists(edges):
+        if os.path.isdir(edges):
             edgeslen = len(os.listdir(edges))
         else:
             edgeslen = 0
-        if os.path.exists(chromes):
+        if os.path.isdir(chromes):
             chromelen = len(os.listdir(chromes))
         else:
             chromelen = 0
@@ -1476,16 +1473,21 @@ class WebviewWidget(abstractwebview):
         cb = winsharedutils.webview2_evaljs_CALLBACK(callback) if callback else None
         winsharedutils.webview2_evaljs(self.webview, js, cb)
 
-    def add_menu(self, index=0, label=None, callback=None):
+    def add_menu(self, index=0, getlabel=None, callback=None):
         __ = winsharedutils.webview2_add_menu_CALLBACK(callback) if callback else None
         self.callbacks.append(__)
-        winsharedutils.webview2_add_menu(self.webview, index, label, __)
+        getlabel = self.wrapgetlabel(getlabel)
+        __3 = (
+            winsharedutils.webview2_contextmenu_gettext(getlabel) if getlabel else None
+        )
+        self.callbacks.append(__3)
+        winsharedutils.webview2_add_menu(self.webview, index, __3, __)
         return index + 1
 
     def add_menu_noselect(
         self,
         index=0,
-        label=None,
+        getlabel=None,
         callback=None,
         checkable=False,
         getchecked=None,
@@ -1507,8 +1509,13 @@ class WebviewWidget(abstractwebview):
             winsharedutils.webview2_add_menu_noselect_getuse(getuse) if getuse else None
         )
         self.callbacks.append(__2)
+        getlabel = self.wrapgetlabel(getlabel)
+        __3 = (
+            winsharedutils.webview2_contextmenu_gettext(getlabel) if getlabel else None
+        )
+        self.callbacks.append(__3)
         winsharedutils.webview2_add_menu_noselect(
-            self.webview, index, label, __, checkable, __1, __2
+            self.webview, index, __3, __, checkable, __1, __2
         )
         return index + 1
 
@@ -1680,7 +1687,7 @@ class WebviewWidget(abstractwebview):
         winsharedutils.webview2_set_observe_ptrs(self.webview, *self.monitorptrs)
 
         self.add_menu()
-        nexti = self.add_menu_noselect()
+        self.add_menu_noselect()
         self.cachezoom = 1
 
     def IconChangedF(self, ptr, size):
@@ -1756,14 +1763,14 @@ class WebviewWidget_for_auto(WebviewWidget):
         nexti = self.add_menu_noselect()
         nexti = self.add_menu_noselect(
             nexti,
-            _TR("附加浏览器插件"),
+            lambda: _TR("附加浏览器插件"),
             threader(self.reloadx.emit),
             True,
             getchecked=lambda: globalconfig["webviewLoadExt_cishu"],
         )
         nexti = self.add_menu_noselect(
             nexti,
-            _TR("浏览器插件"),
+            lambda: _TR("浏览器插件"),
             threader(self.pluginsedit.emit),
             False,
             getuse=lambda: globalconfig["webviewLoadExt_cishu"],
@@ -1816,7 +1823,7 @@ class mshtmlWidget(abstractwebview):
         t.timeout.connect(self.__getcurrent)
         t.timeout.emit()
         t.start()
-        self.add_menu(0, _TR("复制"), winsharedutils.clipboard_set)
+        self.add_menu(0, lambda: _TR("复制"), winsharedutils.clipboard_set)
         self.add_menu(0)
 
     def __getcurrent(self):
@@ -1845,16 +1852,19 @@ class mshtmlWidget(abstractwebview):
     def parsehtml(self, html):
         return self._parsehtml_codec(self._parsehtml_font(self._parsehtml_dark(html)))
 
-    def add_menu(self, index=0, label=None, callback=None):
+    def add_menu(self, index=0, getlabel=None, callback=None):
         cb = winsharedutils.html_add_menu_cb(callback) if callback else None
         self.callbacks.append(cb)
-        winsharedutils.html_add_menu(self.browser, index, label, cb)
+        getlabel = self.wrapgetlabel(getlabel)
+        cb2 = winsharedutils.html_add_menu_gettext(getlabel) if getlabel else None
+        self.callbacks.append(cb2)
+        winsharedutils.html_add_menu(self.browser, index, cb2, cb)
         return index + 1
 
     def add_menu_noselect(
         self,
         index=0,
-        label=None,
+        getlabel=None,
         callback=None,
         checkable=False,
         getchecked=None,
@@ -1862,7 +1872,10 @@ class mshtmlWidget(abstractwebview):
     ):
         cb = winsharedutils.html_add_menu_cb2(callback) if callback else None
         self.callbacks.append(cb)
-        winsharedutils.html_add_menu_noselect(self.browser, index, label, cb)
+        getlabel = self.wrapgetlabel(getlabel)
+        cb2 = winsharedutils.html_add_menu_gettext(getlabel) if getlabel else None
+        self.callbacks.append(cb2)
+        winsharedutils.html_add_menu_noselect(self.browser, index, cb2, cb)
         return index + 1
 
 
@@ -1914,24 +1927,24 @@ class auto_select_webview(QWidget):
         self.bindinfo.append((funcname, function))
         self.internal.bind(funcname, function)
 
-    def add_menu(self, index=0, label=None, callback=None):
-        self.addmenuinfo.append((index, label, callback))
-        return self.internal.add_menu(index, label, callback)
+    def add_menu(self, index=0, getlabel=None, callback=None):
+        self.addmenuinfo.append((index, getlabel, callback))
+        return self.internal.add_menu(index, getlabel, callback)
 
     def add_menu_noselect(
         self,
         index=0,
-        label=None,
+        getlabel=None,
         callback=None,
         checkable=False,
         getchecked=None,
         getuse=None,
     ):
         self.addmenuinfo_noselect.append(
-            (index, label, callback, checkable, getchecked, getuse)
+            (index, getlabel, callback, checkable, getchecked, getuse)
         )
         return self.internal.add_menu_noselect(
-            index, label, callback, checkable, getchecked, getuse
+            index, getlabel, callback, checkable, getchecked, getuse
         )
 
     def clear(self):
@@ -1957,8 +1970,9 @@ class auto_select_webview(QWidget):
     def sizeHint(self):
         return QSize(256, 192)
 
-    def __init__(self, parent, dyna=False) -> None:
+    def __init__(self, parent, dyna=False, loadex=True) -> None:
         super().__init__(parent)
+        self.loadex = loadex
         self.addmenuinfo = []
         self.addmenuinfo_noselect = []
         self.bindinfo = []
@@ -2012,18 +2026,13 @@ class auto_select_webview(QWidget):
             self.internal.setHtml(html)
 
     def _createwebview(self, shoudong=False):
-        contex = globalconfig["usewebview"]
-        if contex == 0:
+        try:
+            browser = (WebviewWidget, WebviewWidget_for_auto)[self.loadex]()
+        except Exception as e:
+            print_exc()
+            if shoudong:
+                WebviewWidget.showError(e)
             browser = mshtmlWidget()
-        else:
-            try:
-                browser = WebviewWidget_for_auto()
-            except Exception as e:
-                print_exc()
-                if shoudong:
-                    WebviewWidget.showError(e)
-                browser = mshtmlWidget()
-                globalconfig["usewebview"] = 0
         return browser
 
 
@@ -2642,6 +2651,7 @@ def getsimplepatheditor(
     clearable=True,
     clearset=None,
     isfontselector=False,
+    w=False,
 ):
     lay = QHBoxLayout()
     lay.setContentsMargins(0, 0, 0, 0)
@@ -2704,6 +2714,10 @@ def getsimplepatheditor(
 
             clear.clicked.connect(functools.partial(__, callback, e, clearset))
             lay.addWidget(clear)
+    if w and isinstance(lay, QLayout):
+        w = QWidget()
+        w.setLayout(lay)
+        lay = w
     return lay
 
 
@@ -2793,17 +2807,22 @@ class pixmapviewer(QWidget):
 
 class IconButton(QPushButton):
     clicked_1 = pyqtSignal()
+    sizeChanged = pyqtSignal(QSize)
 
     def event(self, e):
         if e.type() == QEvent.Type.FontChange:
-            h = QFontMetricsF(self.font()).height()
-            h = int(h * gobject.Consts.btnscale)
-            sz = QSize(h, h)
-            self.setFixedSize(sz)
-            self.setIconSize(sz)
+            self.resizedirect()
         elif e.type() == QEvent.Type.EnabledChange:
             self.seticon()
         return super().event(e)
+
+    def resizedirect(self):
+        h = QFontMetricsF(self.font()).height()
+        h = int(h * gobject.Consts.btnscale)
+        sz = QSize(h, h)
+        self.setFixedSize(sz)
+        self.setIconSize(sz)
+        self.sizeChanged.emit(sz)
 
     def __init__(self, icon, enable=True, qicon=None, parent=None, checkable=False):
         super().__init__(parent)
@@ -2815,13 +2834,17 @@ class IconButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet("border:transparent;padding: 0px;")
         self.setCheckable(checkable)
-        self.setEnabled(enable)
+        self.setEnabled(enable and (bool(icon) or bool(qicon)))
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.resizedirect()
 
     def seticon(self):
         if self._qicon:
             icon = self._qicon
         else:
+            if self._icon is None:
+                # 用于虚拟占位度量
+                return
             if self.isCheckable():
                 if isinstance(self._icon, str):
                     icons = [self._icon, self._icon]
@@ -3039,7 +3062,6 @@ class editswitchTextBrowser(QWidget):
         l.setContentsMargins(0, 0, 0, 0)
         l.addWidget(stack)
         self.switch = IconButton(parent=self, icon="fa.edit", checkable=True)
-        self.switch.setFixedSize(QSize(25, 25))
         self.switch.raise_()
         self.switch.clicked.connect(stack.setCurrentIndex)
 
@@ -3128,3 +3150,40 @@ class ClickableLabel(LLabel):
             self.clicked.emit()
 
     clicked = pyqtSignal()
+
+
+class PopupWidget(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowFlag(Qt.WindowType.Popup)
+        self.dragging = False
+        self.offset = None
+
+    def display(self, pos=None):
+        self.move(pos if pos else QCursor.pos())
+        self.show()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if not self.rect().contains(event.pos()):
+            return super().mousePressEvent(event)
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = True
+            self.offset = QCursor.pos() - self.pos()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if not self.rect().contains(event.pos()):
+            return super().mouseMoveEvent(event)
+        if self.dragging:
+            self.move(QCursor.pos() - self.offset)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if not self.rect().contains(event.pos()):
+            return super().mouseReleaseEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = False
+            self.offset = None
+
+    def closeEvent(self, a0):
+        self.deleteLater()
+        return super().closeEvent(a0)

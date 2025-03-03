@@ -3,10 +3,32 @@ from myutils.config import _TR, _TRL
 from qtsymbols import *
 
 
+class LMessageBox(QMessageBox):
+    def __init__(self, *a, **kw):
+        self.title_ = None
+        self.text_ = None
+        super().__init__(*a, **kw)
+
+    def setWindowTitle(self, title):
+        self.title_ = title
+        super().setWindowTitle(_TR(self.title_))
+
+    def setText(self, text):
+        self.text_ = text
+        super().setText(_TR(self.text_))
+
+    def updatelangtext(self):
+        if self.text_:
+            super().setText(_TR(self.text_))
+        if self.title_:
+            super().setWindowTitle(_TR(self.title_))
+
+
 class LLabel(QLabel):
     def __init__(self, *argc):
         self.__s = None
         self._ToolTip = None
+        self._acc = None
         if len(argc) == 1:
             if isinstance(argc[0], str):
                 self.__s = argc[0]
@@ -25,10 +47,16 @@ class LLabel(QLabel):
             super().setText(_TR(self.__s))
         if self._ToolTip:
             super().setToolTip(_TR(self._ToolTip))
+        if self._acc:
+            super().setAccessibleName(_TR(self._acc))
 
     def setToolTip(self, t):
         self._ToolTip = t
         super().setToolTip(_TR(t))
+
+    def setAccessibleName(self, t):
+        self._acc = t
+        super().setAccessibleName(_TR(t))
 
 
 class LPushButton(QPushButton):
@@ -72,13 +100,6 @@ class LAction(QAction):
             else:
                 newarg.append((arg))
         super().__init__(*newarg, **kwargv)
-
-
-class LMenu(QMenu):
-    def updatelangtext(self):
-        for action in self.actions():
-            if isinstance(action, LAction):
-                action.updatelangtext()
 
 
 class LCheckBox(QCheckBox):

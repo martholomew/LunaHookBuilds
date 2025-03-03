@@ -14,6 +14,7 @@ from myutils.utils import (
     getimageformatlist,
     getimagefilefilter,
     checkmd5reloadmodule,
+    getimageformat,
 )
 from hiraparse.basehira import basehira
 from myutils.wrapper import threader, tryprint
@@ -43,10 +44,6 @@ from gui.usefulwidget import (
 from gui.dynalang import LPushButton, LLabel, LTabWidget, LTabBar, LAction
 from myutils.audioplayer import bass_code_cast
 from gui.dialog_savedgame import threeswitch
-
-
-def getimageformat():
-    return getimageformatlist()[globalconfig["imageformat"]]
 
 
 class AnkiWindow(QWidget):
@@ -120,6 +117,8 @@ class AnkiWindow(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setWindowTitle("Anki Connect")
         self.currentword = ""
+        self.lastankid = None
+        self.lastankiword = None
         self.tabs = makesubtab_lazy(callback=self.ifshowrefresh)
         self.tabs.addTab(self.createaddtab(), "添加")
         tabadd_lazy(self.tabs, "设置", self.creatsetdtab)
@@ -134,7 +133,7 @@ class AnkiWindow(QWidget):
         self.orientswitch = threeswitch(self, icons=["fa.arrows-h", "fa.arrows-v"])
         self.orientswitch.selectlayout(globalconfig["anki_Orientation_V"])
         self.orientswitch.btnclicked.connect(self.selectlayout)
-        self.setsize()
+        self.orientswitch.sizeChanged.connect(self.do_resize)
 
     def selectlayout(self, i):
         globalconfig["anki_Orientation_V"] = i
@@ -147,21 +146,9 @@ class AnkiWindow(QWidget):
     def resizeEvent(self, e: QResizeEvent):
         self.do_resize()
 
-    def event(self, a0: QEvent) -> bool:
-        if a0.type() == QEvent.Type.FontChange:
-            self.setsize()
-        return super().event(a0)
-
-    def do_resize(self):
+    def do_resize(self, _=None):
         x = self.width() - self.orientswitch.width()
         self.orientswitch.move(x, 0)
-
-    def setsize(self):
-        h = QFontMetricsF(self.font()).height()
-        h = int(h * gobject.Consts.btnscale)
-        sz = QSize(h * 2, h)
-        self.orientswitch.setFixedSize(sz)
-        self.do_resize()
 
     def ifshowrefresh(self, idx):
         if idx == 2:
@@ -319,52 +306,6 @@ class AnkiWindow(QWidget):
                     html = '<img src="data:image/png;base64,{}">'.format(b64)
                 for field in target["fields"]:
                     fields[field] = html
-        return fields
-
-    def loadfakefields(self):
-        if len(self.editpath.text()):
-            try:
-                with open(self.editpath.text(), "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-                encoded_string = '<img src="data:image/png;base64,{}">'.format(
-                    encoded_string
-                )
-            except:
-                encoded_string = ""
-        else:
-            encoded_string = ""
-        if len(self.audiopath.text()):
-            try:
-                with open(self.audiopath.text(), "rb") as image_file:
-                    encoded_string2 = base64.b64encode(image_file.read()).decode(
-                        "utf-8"
-                    )
-                encoded_string2 = """<button onclick='document.getElementById("audio1111").play()'>play audio<audio controls id="audio1111" style="display: none"><source src="data:audio/mpeg;base64,{}"></audio></button>""".format(
-                    encoded_string2
-                )
-            except:
-                encoded_string2 = ""
-        else:
-            encoded_string2 = ""
-        if len(self.audiopath_sentence.text()):
-            try:
-                with open(self.audiopath_sentence.text(), "rb") as image_file:
-                    encoded_string3 = base64.b64encode(image_file.read()).decode(
-                        "utf-8"
-                    )
-                encoded_string3 = """<button onclick='document.getElementById("audio2222").play()'>play audio_sentence<audio controls id="audio2222" style="display: none"><source src="data:audio/mpeg;base64,{}"></audio></button>""".format(
-                    encoded_string3
-                )
-            except:
-
-                encoded_string3 = ""
-        else:
-            encoded_string3 = ""
-        fields = {
-            "audio_for_word": encoded_string2,
-            "audio_for_example_sentence": encoded_string3,
-            "screenshot": encoded_string,
-        }
         return fields
 
     def saveedits(self):
@@ -778,32 +719,26 @@ class AnkiWindow(QWidget):
         if res != "":
             item.setText(res)
 
-    def selecfile(self, item):
+    def selecfile(self, item: QLineEdit):
         f = QFileDialog.getOpenFileName()
         res = f[0]
         if res != "":
             item.setText(res)
 
-    def makerubyhtml(self, ruby):
-        if not ruby:
-            return ""
-        html = ""
-        for i in range(len(ruby)):
-            html += ruby[i]["orig"]
-            if ruby[i]["orig"] != ruby[i]["hira"]:
-                html += "<rt>" + ruby[i]["hira"] + "</rt>"
-            else:
-                html += "<rt></rt>"
-        html = "<ruby>" + html + "</ruby>"
-        return html
-
     def wordedit_t(self, text):
         self.currentword = text
         if text and len(text):
             _hs = gobject.baseobject.parsehira(text)
-            self.zhuyinedit.setPlainText(self.makerubyhtml(basehira.parseastarget(_hs)))
+            self.zhuyinedit.setPlainText(basehira.makerubyhtml(_hs))
         else:
             self.zhuyinedit.clear()
+
+    def maybereset(self, text):
+        self.wordedit.setText(text)
+        if gobject.baseobject.currenttext != self.example.toPlainText():
+            self.editpath.clear()
+            self.audiopath.clear()
+            self.audiopath_sentence.clear()
 
     def reset(self, text):
         self.wordedit.setText(text)
@@ -813,6 +748,14 @@ class AnkiWindow(QWidget):
 
     def errorwrap(self, close=False):
         try:
+            anki.global_port = globalconfig["ankiconnect"]["port"]
+            anki.global_host = globalconfig["ankiconnect"]["host"]
+            if self.currentword == self.lastankiword:
+                response = QMessageBox.question(
+                    self, "?", _TR("检测到存在重复，是否覆盖？")
+                )
+                if response == QMessageBox.StandardButton.Yes:
+                    anki.Note.delete([self.lastankid])
             self.addanki()
             if globalconfig["ankiconnect"]["addsuccautocloseEx"] and self.isVisible():
                 self.refsearchw.ankiconnect.click()
@@ -894,9 +837,10 @@ class AnkiWindow(QWidget):
                     }
                 )
         text_fields, audios, pictures = self.getfieldsdataall()
-        anki.Note.add(
+        self.lastankid = anki.Note.add(
             DeckName, ModelName, text_fields, allowDuplicate, tags, audios, pictures
         )
+        self.lastankiword = self.currentword
 
     def getfieldsdataall(self):
         text_fields = self.loadfileds()
@@ -1323,7 +1267,7 @@ class searchwordW(closeashidewindow):
         self.searchlayout = QHBoxLayout()
         self.vboxlayout.addLayout(self.searchlayout)
         self.searchtext = FQLineEdit()
-        self.searchtext.textChanged.connect(self.ankiwindow.reset)
+        self.searchtext.textChanged.connect(self.ankiwindow.maybereset)
 
         self.dictbutton = IconButton(icon="fa.book", checkable=True)
         self.historys = []
@@ -1378,30 +1322,34 @@ class searchwordW(closeashidewindow):
         self.setCentralWidget(ww)
         self.textOutput = showwordfastwebview(self, True)
         nexti = self.textOutput.add_menu(
-            0, _TR("查词"), lambda w: self.search_word.emit(w, False)
+            0, lambda: _TR("查词"), lambda w: self.search_word.emit(w, False)
         )
         nexti = self.textOutput.add_menu(
-            nexti, _TR("在新窗口中查词"), threader(self.search_word_in_new_window.emit)
+            nexti,
+            lambda: _TR("在新窗口中查词"),
+            threader(self.search_word_in_new_window.emit),
         )
         nexti = self.textOutput.add_menu(
-            nexti, _TR("翻译"), gobject.baseobject.textgetmethod
+            nexti, lambda: _TR("翻译"), gobject.baseobject.textgetmethod
         )
         nexti = self.textOutput.add_menu(
-            nexti, _TR("朗读"), gobject.baseobject.read_text
+            nexti, lambda: _TR("朗读"), gobject.baseobject.read_text
         )
         nexti = self.textOutput.add_menu(
-            nexti, _TR("加亮"), lambda _: self.textOutput.eval("highlightSelection()")
+            nexti,
+            lambda: _TR("加亮"),
+            lambda _: self.textOutput.eval("highlightSelection()"),
         )
         self.ishightlight = False
         nexti = self.textOutput.add_menu_noselect(
             0,
-            _TR("加亮模式"),
+            lambda: _TR("加亮模式"),
             lambda: self.textOutput.eval("switch_hightlightmode()"),
             checkable=True,
             getchecked=lambda: self.callvalue(),
         )
         nexti = self.textOutput.add_menu_noselect(
-            nexti, _TR("清除加亮"), self.clear_hightlight
+            nexti, lambda: _TR("清除加亮"), self.clear_hightlight
         )
         self.textOutput.set_zoom(globalconfig["ZoomFactor"])
         self.textOutput.on_ZoomFactorChanged.connect(
@@ -1564,7 +1512,7 @@ class searchwordW(closeashidewindow):
         self.__parsehistory(word)
         if globalconfig["is_search_word_auto_tts"]:
             gobject.baseobject.read_text(self.searchtext.text())
-        self.ankiwindow.reset(word)
+        self.ankiwindow.maybereset(word)
         for i in range(self.tab.count()):
             self.tab.removeTab(0)
         self.tabks.clear()
