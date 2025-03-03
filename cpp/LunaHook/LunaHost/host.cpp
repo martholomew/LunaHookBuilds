@@ -225,7 +225,7 @@ namespace Host
 		if (createconsole)
 		{
 			OnCreate(textThreadsByParams->try_emplace(console, console, HookParam{}, CONSOLE).first->second);
-			Host::AddConsoleOutput(ProjectHomePage);
+			// Host::AddConsoleOutput(ProjectHomePage);
 		}
 
 		// CreatePipe();
