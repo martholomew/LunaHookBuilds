@@ -66,7 +66,7 @@ jobs:
         shell: bash
       - run: python src/scripts/build_lunahook.py merge
       - name: List files for release
-        run: dir src/cpp/LunaHook/builds
+        run: dir src\cpp\LunaHook\builds
         shell: cmd
       - uses: softprops/action-gh-release@v2
         with:
