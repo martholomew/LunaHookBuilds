@@ -1,5 +1,8 @@
 name: buildlunahook
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -18,52 +21,11 @@ jobs:
           sdk-version: 22621
       - run: python src/scripts/build_lunahook.py build winxp
       - run: python src/scripts/packlunahook.py
-
       - uses: actions/upload-artifact@v4
         with:
           name: winxp
           path: src/cpp/LunaHook/builds
-  
-  # build_plugin:
-  #   runs-on: windows-latest
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - bits: 32
-  #           qtarch: win32_msvc2019
-  #         - bits: 64
-  #           qtarch: win64_msvc2019_64
-  #   permissions:
-  #     id-token: write
-  #     attestations: write
-  #     contents: write
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
-  #       with:
-  #         sdk-version: 22621
-      
-  #     - uses: jurplel/install-qt-action@v3.3.0
-  #       with:
-  #         version:      5.15.2
-  #         host:         windows
-  #         target:       desktop
-  #         arch:         ${{ matrix.qtarch }}
-  #         dir:          ${{ runner.temp }}
-  #         setup-python: true
-  #     - run: python src/scripts/build_lunahook.py plugin ${{ matrix.bits }}
-  #     - run: python src/scripts/packlunahook.py
 
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: plugin${{ matrix.bits }}
-  #         path: src/cpp/LunaHook/builds/plugin${{ matrix.bits }}.zip
-  #     - uses: softprops/action-gh-release@v2
-  #       with:
-  #         tag_name: LunaHook
-  #         files: src/cpp/LunaHook/builds/plugin${{ matrix.bits }}.zip
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build_x:
     runs-on: windows-latest
     strategy:
@@ -81,24 +43,34 @@ jobs:
         with:
           sdk-version: 22621
       - run: python src/scripts/build_lunahook.py build ${{matrix.bits}}
-
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{matrix.bits}}
+          name: win${{matrix.bits}}
           path: src/cpp/LunaHook/builds
-  
+
   build:
     runs-on: windows-latest
-    needs: [build_x,build_xp]
+    needs: [build_x, build_xp]
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-            path: src/cpp/LunaHook/build
+          path: artifacts
+      - name: Organize artifacts
+        run: |
+          mkdir -p src/cpp/LunaHook/builds
+          cp -r artifacts/winxp/* src/cpp/LunaHook/builds/
+          cp -r artifacts/win64/* src/cpp/LunaHook/builds/
+        shell: bash
       - run: python src/scripts/build_lunahook.py merge
+      - name: List files for release
+        run: dir src/cpp/LunaHook/builds
+        shell: cmd
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: LunaHook
+          tag_name: LunaHook-${{ github.sha }}
           files: src/cpp/LunaHook/builds/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
