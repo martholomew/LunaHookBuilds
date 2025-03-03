@@ -65,11 +65,11 @@ jobs:
           cp -r artifacts/win64/* src/cpp/LunaHook/build/release
         shell: bash
       - name: List files for release
-        run: dir src\cpp\LunaHook\builds\release
+        run: dir src\cpp\LunaHook\build\release
         shell: cmd
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: LunaHook-${{ github.sha }}
-          files: src/cpp/LunaHook/builds/*
+          files: src/cpp/LunaHook/build/release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
