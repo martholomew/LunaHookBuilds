@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: git submodule init src/cpp/libs/minhook
       - run: git submodule update src/cpp/libs/minhook
-      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
+      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v4
         with:
           sdk-version: 22621
       - run: python src/scripts/build_lunahook.py build ${{matrix.bits}}
@@ -60,9 +60,9 @@ jobs:
           path: artifacts
       - name: Organize artifacts
         run: |
-          mkdir -p src/cpp/LunaHook/builds
-          cp -r artifacts/winxp/* src/cpp/LunaHook/builds/
-          cp -r artifacts/win64/* src/cpp/LunaHook/builds/
+          mkdir -p src/cpp/LunaHook/build
+          cp -r artifacts/winxp/* src/cpp/LunaHook/build/winxp/
+          cp -r artifacts/win64/* src/cpp/LunaHook/build/64/
         shell: bash
       - run: python src/scripts/build_lunahook.py merge
       - name: List files for release
