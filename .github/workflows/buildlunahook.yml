@@ -99,6 +99,6 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: LunaHook
-          files: src/cpp/LunaHook/builds/*
+          files: src/cpp/build/Release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
