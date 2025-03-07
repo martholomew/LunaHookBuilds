@@ -188,7 +188,8 @@ enum class JITTYPE
 	PPSSPP,
 	VITA3K,
 	RPCS3,
-	UNITY
+	UNITY,
+	PCSX2,
 };
 struct TextBuffer;
 struct HookParam
@@ -281,6 +282,13 @@ struct HostInfoNotif
 	HOSTINFO type;
 	char message[MESSAGE_SIZE] = {};
 };
+struct HostInfoNotifW
+{
+	HostInfoNotifW(std::wstring message = L"") { wcsncpy_s(this->message, message.c_str(), MESSAGE_SIZE - 1); }
+	HostNotificationType command = HOST_NOTIFICATION_TEXT_W;
+	HOSTINFO type;
+	wchar_t message[MESSAGE_SIZE] = {};
+};
 
 struct HookFoundNotif
 {
@@ -354,17 +362,29 @@ struct TextBuffer
 	{
 		return std::wstring_view((wchar_t *)buff, size / 2);
 	}
-	std::basic_string_view<uint32_t> viewU()
+	std::u32string_view viewU()
 	{
-		return std::basic_string_view<uint32_t>((uint32_t *)buff, size / 4);
+		return std::u32string_view((char32_t *)buff, size / 4);
 	}
 	std::string strA()
 	{
 		return std::string((char *)buff, size);
 	}
+	std::u32string strU()
+	{
+		return std::u32string((char32_t *)buff, size / sizeof(char32_t));
+	}
 	std::wstring strW()
 	{
 		return std::wstring((wchar_t *)buff, size / 2);
+	}
+	std::wstring strAW(UINT cp = 932)
+	{
+		return StringToWideString(viewA(), cp).value();
+	}
+	void fromWA(const std::wstring &ws, UINT cp = 932)
+	{
+		from(WideStringToString(ws, cp));
 	}
 	void clear()
 	{

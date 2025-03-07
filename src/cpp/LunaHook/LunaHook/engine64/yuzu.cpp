@@ -1,5 +1,6 @@
 ﻿#include "yuzu.h"
 #include "mages/mages.h"
+#include "JIT_Keeper.hpp"
 namespace
 {
     auto isFastMem = true;
@@ -170,18 +171,85 @@ namespace
                 // citronv 5->2
                 auto game = spls[(spls.size() == 4) ? 1 : 2];
                 Trim(strReplace(game, L"(64-bit)"));
-                return HostInfo(HOSTINFO::EmuGameName, WideStringToString(game).c_str());
+                return HostInfo(HOSTINFO::EmuGameName, game.c_str());
             }
         }
     }
+    void NS_CheckEmAddrHOOKable(uint64_t em_address, uintptr_t entrypoint)
+    {
+        if (emfunctionhooks.find(em_address) == emfunctionhooks.end())
+            return;
+        auto op = emfunctionhooks.at(em_address);
+        if (!(checkiscurrentgame(op)))
+            return;
+
+        HookParam hpinternal;
+        hpinternal.address = entrypoint;
+        hpinternal.emu_addr = em_address; // 用于生成hcode
+        hpinternal.type = NO_CONTEXT | BREAK_POINT | op.type;
+        if (!(op.type & USING_CHAR))
+            hpinternal.type |= USING_STRING;
+        hpinternal.codepage = 932;
+        hpinternal.text_fun = op.hookfunc;
+        hpinternal.filter_fun = op.filterfun;
+        hpinternal.offset = op.offset;
+        hpinternal.padding = op.padding;
+        hpinternal.jittype = JITTYPE::YUZU;
+
+        std::string ids;
+        auto visitf = [&](auto &&_ids)
+        {
+            using T = std::decay_t<decltype(_ids)>;
+            if constexpr (std::is_same_v<T, uint64_t>)
+            {
+                ids = ull2hex(_ids);
+            }
+            else if constexpr (std::is_same_v<T, std::vector<uint64_t>>)
+            {
+                if (std::any_of(_ids.begin(), _ids.end(), [=](uint64_t _id)
+                                { return _id == game_info.id; }))
+                {
+                    ids = ull2hex(game_info.id);
+                }
+                else
+                {
+                    ids = ull2hex(_ids[0]);
+                }
+            }
+        };
+        std::visit(visitf, op._id);
+
+        NewHook(hpinternal, ids.c_str());
+    }
 }
+struct NSGameInfoC
+{
+    GameInfo info;
+    bool load()
+    {
+        game_info = std::move(info);
+        if (game_info.id)
+        {
+            HostInfo(HOSTINFO::EmuGameName, "%s %s %s", game_info.name.c_str(), ull2hex(game_info.id).c_str(), game_info.version.c_str());
+        }
+        else
+        {
+            trygetgameinwindowtitle();
+        }
+        return true;
+    }
+    void save()
+    {
+        info = std::move(game_info);
+    }
+};
 bool yuzu::attach_function()
 {
     ConsoleOutput("[Compatibility] Yuzu 1616+");
     auto DoJitPtr = getDoJitAddress();
     if (!DoJitPtr)
         return false;
-    trygetgameinwindowtitle();
+    JIT_Keeper<NSGameInfoC>::CreateStatic(NS_CheckEmAddrHOOKable);
     Hook_Network_RoomMember_SendGameInfo();
     HookParam hp;
     hp.address = DoJitPtr;
@@ -193,52 +261,7 @@ bool yuzu::attach_function()
         if (!entrypoint)
             return;
         jitaddraddr(em_address, entrypoint, JITTYPE::YUZU);
-        [&]()
-        {
-            if (emfunctionhooks.find(em_address) == emfunctionhooks.end())
-                return;
-            auto op = emfunctionhooks.at(em_address);
-            if (!(checkiscurrentgame(op)))
-                return;
-
-            HookParam hpinternal;
-            hpinternal.address = entrypoint;
-            hpinternal.emu_addr = em_address; // 用于生成hcode
-            hpinternal.type = NO_CONTEXT | BREAK_POINT | op.type;
-            if (!(op.type & USING_CHAR))
-                hpinternal.type |= USING_STRING;
-            hpinternal.codepage = 932;
-            hpinternal.text_fun = op.hookfunc;
-            hpinternal.filter_fun = op.filterfun;
-            hpinternal.offset = op.offset;
-            hpinternal.padding = op.padding;
-            hpinternal.jittype = JITTYPE::YUZU;
-
-            std::string ids;
-            auto visitf = [&](auto &&_ids)
-            {
-                using T = std::decay_t<decltype(_ids)>;
-                if constexpr (std::is_same_v<T, uint64_t>)
-                {
-                    ids = ull2hex(_ids);
-                }
-                else if constexpr (std::is_same_v<T, std::vector<uint64_t>>)
-                {
-                    if (std::any_of(_ids.begin(), _ids.end(), [=](uint64_t _id)
-                                    { return _id == game_info.id; }))
-                    {
-                        ids = ull2hex(game_info.id);
-                    }
-                    else
-                    {
-                        ids = ull2hex(_ids[0]);
-                    }
-                }
-            };
-            std::visit(visitf, op._id);
-
-            NewHook(hpinternal, ids.c_str());
-        }();
+        NS_CheckEmAddrHOOKable(em_address, entrypoint);
         delayinsertNewHook(em_address);
     };
     return NewHook(hp, "YuzuDoJit");
@@ -448,28 +471,12 @@ namespace
                 s += content;
             }
         }
-        static auto katakanaMapExtra = std::map<wchar_t, wchar_t>{
-            {L'?', L'　'}, // invalid (shift_jis A0 <=> EF A3 B0) | FF FD - F8 F0)
-        };
-
-        auto remap = [](std::string &s)
-        {
-            std::wstring result;
-            auto ws = StringToWideString(s, 932).value();
-            for (auto c : ws)
-            {
-                if (c == L'\uF8F0' || c == L'\uFFFD')
-                    continue;
-                if (katakanaMapExtra.find(c) != katakanaMapExtra.end())
-                    result += katakanaMapExtra[c];
-                else if (katakanaMap.find(c) != katakanaMap.end())
-                    result += katakanaMap[c];
-                else
-                    result += c;
-            }
-            return WideStringToString(result, 932);
-        };
-        buffer->from(remap(s));
+        auto ws = StringToWideString(s, 932).value();
+        strReplace(ws, L"\uF8F0");
+        strReplace(ws, L"\uFFFD");
+        strReplace(ws, L"?", L"　");
+        ws = remapkatakana(ws);
+        buffer->fromWA(ws);
     }
     void F01006590155AC000(TextBuffer *buffer, HookParam *hp)
     {
@@ -743,11 +750,11 @@ namespace
     }
     void F0100CF90151E0000(TextBuffer *buffer, HookParam *hp)
     {
-        auto ws = StringToWideString(buffer->viewA(), 932).value();
+        auto ws = buffer->strAW();
         strReplace(ws, L"^");
         ws = re::sub(ws, (LR"(@c\d)"));
         ws = re::sub(ws, (LR"(@v\(\d+\))"));
-        buffer->from(WideStringToString(ws, 932));
+        buffer->fromWA(ws);
     }
     void F010052300F612000(TextBuffer *buffer, HookParam *hp)
     {
@@ -1281,9 +1288,9 @@ namespace
     }
     void F0100E4000F616000(TextBuffer *buffer, HookParam *hp)
     {
-        auto ws = StringToWideString(buffer->viewA(), 932).value();
+        auto ws = buffer->strAW();
         ws = re::sub(ws, (LR"(\\\w)"));
-        buffer->from(WideStringToString(ws, 932));
+        buffer->fromWA(ws);
     }
     void F01005A401D766000(TextBuffer *buffer, HookParam *hp)
     {
@@ -1365,7 +1372,6 @@ namespace
 
     void F0100BD4014D8C000(TextBuffer *buffer, HookParam *hp)
     {
-
         auto s = buffer->strW();
         s = re::sub(s, (L"<[^>]*>"));
         s = re::sub(s, (L".*?_"));
@@ -1732,7 +1738,6 @@ namespace
     }
     void F0100771013FA8000(TextBuffer *buffer, HookParam *hp)
     {
-
         auto s = buffer->strW();
         s = re::sub(s, (L"<br>"), L"\n");
         s = re::sub(s, (L"^(\\s+)"));
@@ -1919,7 +1924,6 @@ namespace
     }
     void F010061A01C1CE000(TextBuffer *buffer, HookParam *hp)
     {
-
         auto s = buffer->strW();
         s = re::sub(s, (L"[\\s]"));
         s = re::sub(s, (L"sound"), L" ");
@@ -1942,13 +1946,13 @@ namespace
     }
     void F0100509013040000(TextBuffer *buffer, HookParam *hp)
     {
-        auto ws = StringToWideString(buffer->viewA(), 932).value();
+        auto ws = buffer->strAW();
         strReplace(ws, L"^");
-        buffer->from(WideStringToString(ws, 932));
+        buffer->fromWA(ws);
     }
     void F01005090130400002(TextBuffer *buffer, HookParam *hp)
     {
-        auto ws = StringToWideString(buffer->viewA(), 932).value();
+        auto ws = buffer->strAW();
         if (startWith(ws, L"_SELZ"))
         {
             auto _ = strSplit(strSplit(ws, L");")[0], L",");
@@ -1959,7 +1963,7 @@ namespace
                     wss += L"\r\n";
                 wss += _[i];
             }
-            buffer->from(WideStringToString(wss, 932));
+            buffer->fromWA(wss);
         }
         else
             buffer->clear();
@@ -2039,9 +2043,9 @@ namespace
     }
     void F01004BD01639E000_n(TextBuffer *buffer, HookParam *hp)
     {
-        auto s = utf32_to_utf16(buffer->viewU());
-        strReplace(s, L"　");
-        buffer->from(utf16_to_utf32(s));
+        auto s = buffer->strU();
+        strReplace(s, U"　");
+        buffer->from(s);
     }
     void F01004BD01639E000_tx(TextBuffer *buffer, HookParam *hp)
     {
@@ -2054,10 +2058,10 @@ namespace
     }
     void F01004BD01639E000_t(TextBuffer *buffer, HookParam *hp)
     {
-        auto s = utf32_to_utf16(buffer->viewU());
-        strReplace(s, L"\n　");
-        strReplace(s, L"\n");
-        buffer->from(utf16_to_utf32(s));
+        auto s = buffer->strU();
+        strReplace(s, U"\n　");
+        strReplace(s, U"\n");
+        buffer->from(s);
     }
     void F01001E601F6B8000_text(TextBuffer *buffer, HookParam *hp)
     {
@@ -2186,13 +2190,13 @@ namespace
     template <bool choice>
     void F0100E5200D1A2000(TextBuffer *buffer, HookParam *hp)
     {
-        auto ws = StringToWideString(buffer->viewA(), 932).value();
+        auto ws = buffer->strAW();
         ws = re::sub(ws, (LR"((\\n)+)"), L" ");
         ws = re::sub(ws, (LR"(\\d$|^\@[a-z]+|#.*?#|\$)"));
         ws = re::sub(ws, (LR"(\u3000+)"));
         if (choice)
             ws = re::sub(ws, (LR"(, ?\w+)"));
-        buffer->from(WideStringToString(ws, 932));
+        buffer->fromWA(ws);
     }
     void F010028D0148E6000_2(TextBuffer *buffer, HookParam *hp)
     {
@@ -2230,14 +2234,14 @@ namespace
     template <bool choice>
     void F0100EFE0159C6000(TextBuffer *buffer, HookParam *hp)
     {
-        auto ws = StringToWideString(buffer->viewA(), 932).value();
+        auto ws = buffer->strAW();
         ws = re::sub(ws, (LR"((\\n)+)"), L" ");
         ws = re::sub(ws, (LR"(\\d$|^\@[a-z]+|#.*?#|\$)"));
         ws = re::sub(ws, (LR"(\u3000+)"));
         ws = re::sub(ws, (LR"(@w|\\c)"));
         if (choice)
             ws = re::sub(ws, (LR"(, ?\w+)"));
-        buffer->from(WideStringToString(ws, 932));
+        buffer->fromWA(ws);
     }
 
     void F0100FDB00AA80000(TextBuffer *buffer, HookParam *hp)
@@ -2653,6 +2657,7 @@ namespace
             {0x8003EAB0, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100957016B90000ull, "1.0.0"}}, // TIPS list (menu)
             {0x8004C648, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100957016B90000ull, "1.0.0"}}, // system message
             {0x80050374, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100957016B90000ull, "1.0.0"}}, // TIPS (red)
+            {0x8004672c, {CODEC_UTF16, 0, 0, mages_readstring, 0, 0x0100957016B90000ull, "1.0.1"}},
             // 白と黒のアリス
             {0x80013f20, {CODEC_UTF8, 0, 0, 0, NewLineCharFilterW, 0x0100A460141B8000ull, "1.0.0"}},
             {0x80013f94, {CODEC_UTF8, 0, 0, 0, NewLineCharFilterW, 0x0100A460141B8000ull, "1.0.0"}},
