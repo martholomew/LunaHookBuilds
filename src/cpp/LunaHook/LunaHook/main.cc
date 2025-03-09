@@ -115,6 +115,8 @@ DWORD WINAPI Pipe(LPVOID)
 
 void TextOutput(const ThreadParam &tp, const HookParam &hp, TextOutput_T *buffer, int len)
 {
+	if (!len)
+		return;
 	memcpy(&buffer->tp, &tp, sizeof(tp));
 	memcpy(&buffer->hp, &hp, sizeof(hp));
 	WriteFile(hookPipe, buffer, sizeof(TextOutput_T) + len, DUMMY, nullptr);
@@ -302,6 +304,9 @@ void delayinsertNewHook(uint64_t em_address)
 	_delayinserthook->erase(em_address);
 	NewHook(h.second, h.first.c_str());
 }
+#ifdef _WIN64
+bool PCSX2_UserHook_delayinsert(uint32_t);
+#endif
 bool NewHook(HookParam hp, LPCSTR name)
 {
 	if (hp.address || hp.jittype == JITTYPE::PC)
@@ -338,11 +343,31 @@ bool NewHook(HookParam hp, LPCSTR name)
 		return NewHook_1(hp, name);
 	}
 	std::lock_guard _(maplock);
-	// 下面的是手动插入
-	if (emuaddr2jitaddr.find(hp.emu_addr) == emuaddr2jitaddr.end())
+// 下面的是手动插入
+#ifdef _WIN64
+	if (hp.jittype == JITTYPE::PCSX2)
 	{
-		delayinsertadd(hp, name);
-		return true;
+		if (hp.type & DIRECT_READ)
+		{
+			hp.address = PCSX2Types::emu_addr(hp.emu_addr);
+			return NewHook_1(hp, name);
+		}
+		else if (PCSX2_UserHook_delayinsert(hp.emu_addr))
+			return true;
+		else if (emuaddr2jitaddr.find(hp.emu_addr) == emuaddr2jitaddr.end())
+		{
+			delayinsertadd(hp, name);
+			return true;
+		}
+	}
+	else
+#endif
+	{
+		if (emuaddr2jitaddr.find(hp.emu_addr) == emuaddr2jitaddr.end())
+		{
+			delayinsertadd(hp, name);
+			return true;
+		}
 	}
 	strcpy(hp.function, "");
 	wcscpy(hp.module, L"");

@@ -123,6 +123,7 @@ namespace
         if (!EEmem)
             return false;
         eeMem = *(decltype(eeMem) *)EEmem;
+        ConsoleOutput("eeMem %p", eeMem);
         return true;
     }
     void SafeAddBreakPoint(u32 addr, bool enable = true)
@@ -167,6 +168,16 @@ namespace
         hpinternal.jittype = JITTYPE::PCSX2;
         NewHook(hpinternal, op._id);
     }
+    std::set<uint32_t> recRecompileReady;
+}
+bool PCSX2_UserHook_delayinsert(uint32_t addr)
+{
+    if (recRecompileReady.find(addr) == recRecompileReady.end())
+    {
+        SafeAddBreakPoint(addr);
+        return true;
+    }
+    return false;
 }
 bool PCSX2::attach_function()
 {
@@ -192,6 +203,23 @@ bool PCSX2::attach_function()
             const GameList::Entry *entry = (GameList::Entry *)context->rdx;
             current_serial = entry->serial;
             jitaddrclear();
+            for (auto &&[addr, op] : emfunctionhooks)
+            {
+                if ((op._id == current_serial) && (op.type & DIRECT_READ))
+                {
+                    HookParam hpinternal;
+                    hpinternal.address = emu_addr(addr);
+                    hpinternal.emu_addr = addr;
+                    hpinternal.jittype = JITTYPE::PCSX2;
+                    hpinternal.type = op.type;
+                    hpinternal.codepage = 932;
+                    hpinternal.text_fun = op.hookfunc;
+                    hpinternal.filter_fun = op.filterfun;
+                    hpinternal.offset = op.offset;
+                    hpinternal.padding = op.padding;
+                    NewHook(hpinternal, op._id);
+                }
+            }
             return HostInfo(HOSTINFO::EmuGameName, "%s %s", entry->serial.c_str(), entry->title.c_str());
         };
         succ = succ && NewHook(hp, "startGameListEntry");
@@ -217,8 +245,10 @@ bool PCSX2::attach_function()
                     std::lock_guard _(maplock);
                     if (emuaddr2jitaddr.find(startpc) == emuaddr2jitaddr.end())
                         return;
+                    recRecompileReady.insert(startpc);
                     auto fnptr = emuaddr2jitaddr[startpc].second;
                     CheckForHook(startpc, fnptr);
+                    delayinsertNewHook(startpc);
                 };
                 NewHook(hpinternal, "Ret");
             }
@@ -235,9 +265,10 @@ bool PCSX2::attach_function()
         //{(void *)psxDynarecCheckBreakpoint, +[]() {}},
     };
     patch_fun_ptrs_patch_once();
-    for (auto &&hs : emfunctionhooks)
+    for (auto &&[addr, op] : emfunctionhooks)
     {
-        SafeAddBreakPoint(hs.first);
+        if (!(op.type & DIRECT_READ))
+            SafeAddBreakPoint(addr);
     }
     return true;
 }
@@ -289,10 +320,88 @@ namespace
         s = re::sub(s, LR"(^([a-zA-Z]+)|([a-zA-Z]+)$)");
         buffer->fromWA(s);
     }
+    void SLPM62343(TextBuffer *buffer, HookParam *hp)
+    {
+        CharFilter(buffer, '\n');
+        StringFilter(buffer, TEXTANDLEN("/K"));
+        StringFilter(buffer, TEXTANDLEN("/L"));
+        StringFilter(buffer, TEXTANDLEN("\x81\x40"));
+    }
+    void SLPL25871(TextBuffer *buffer, HookParam *hp)
+    {
+        if (buffer->size <= 4)
+            return buffer->clear();
+        CharFilter(buffer, '\n');
+        StringFilter(buffer, TEXTANDLEN("\x81\x40"));
+    }
     void FSLPS25547(TextBuffer *buffer, HookParam *hp)
     {
         CharFilter(buffer, '\n');
         FSLPS25677(buffer, hp);
+    }
+    void SLPS25809(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("/K"));
+        CharFilter(buffer, '\n');
+        auto s = buffer->strA();
+        static std::string last;
+        if (last == s)
+            return buffer->clear();
+        last = s;
+    }
+    void FSLPM66332(TextBuffer *buffer, HookParam *hp)
+    {
+        CharFilter(buffer, '\x01');
+        // 文本速度太慢了
+        auto s = buffer->strA();
+        static std::string last;
+        if (startWith(s, last))
+        {
+            buffer->from(s.substr(last.size()));
+        }
+        last = s;
+    }
+    void FSLPM55195(TextBuffer *buffer, HookParam *hp)
+    {
+        StringFilter(buffer, TEXTANDLEN("%n\x81\x40"));
+        StringFilter(buffer, TEXTANDLEN("%n"));
+    }
+    void FSLPM65997(TextBuffer *buffer, HookParam *hp)
+    {
+        auto s = buffer->strA();
+        s = re::sub(s, R"(#\w+?\[\d\])");
+        strReplace(s, "#n");
+        buffer->from(s);
+    }
+    void SLPS20394(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        static std::string last;
+        static std::string lasts[4];
+        std::string collect;
+        auto addrs = {0x2AF161, 0x2AFAA8, 0x2AEFA4, 0x2AEFE5};
+        for (auto str : addrs)
+            collect += (char *)emu_addr(str);
+        if (last == collect)
+            return;
+        last = collect;
+        int i = -1;
+        collect = "";
+        for (auto str : addrs)
+        {
+            i++;
+            std::string x = (char *)emu_addr(str);
+            if (x[0] == 'y')
+            {
+                x = '\x81' + x;
+            }
+            if (i && (lasts[i] == x))
+                break;
+            lasts[i] = x;
+            collect += x;
+        }
+        strReplace(collect, "\x99\xea", "\x98\xa3");
+        strReplace(collect, "\x81\x40");
+        buffer->from(collect);
     }
     auto _ = []()
     {
@@ -310,6 +419,25 @@ namespace
             // ブラッドプラス ワン ナイト キス
             {0x267B58, {0, PCSX2_REG_OFFSET(a3), 0, 0, FSLPS25677, "SLPS-25677"}},
             {0x268260, {0, PCSX2_REG_OFFSET(a3), 0, 0, FSLPS25677, "SLPS-25677"}},
+            // プリンセスラバー！ Eternal Love For My Lady
+            {0x92748C, {DIRECT_READ, 0, 0, 0, FSLPM55195, "SLPM-55195"}},
+            // 破滅のマルス
+            {0x308460, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-65997"}},
+            // フレンズ ～青春の輝き～
+            {0x456048, {DIRECT_READ, 0, 0, 0, 0, "SLPS-25385"}},
+            // SAMURAI 7
+            {0x190FDac, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66399"}},
+            // 高円寺女子サッカー
+            {0x53FA10, {DIRECT_READ | CODEC_UTF8, 0, 0, 0, FSLPM66332, "SLPM-66332"}},
+            // 銀魂 銀さんと一緒！ボクのかぶき町日記
+            {0x8DA13A, {DIRECT_READ, 0, 0, 0, SLPS25809, "SLPS-25809"}},
+            // THE 恋愛ホラーアドベンチャー～漂流少女～
+            {0x1A1640, {DIRECT_READ, 0, 0, 0, SLPM62343, "SLPM-62343"}},
+            // 好きなものは好きだからしょうがない！！ -RAIN- Sukisyo！ Episode #03
+            {0x2AF161, {DIRECT_READ, 0, 0, SLPS20394, 0, "SLPS-20394"}},
+            // ドラスティックキラー
+            {0x1AC5D40, {DIRECT_READ, 0, 0, 0, SLPL25871, "SLPS-25871"}},
+            {0x1AC6970, {DIRECT_READ, 0, 0, 0, SLPL25871, "SLPS-25871"}},
         };
         return 0;
     }();
