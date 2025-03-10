@@ -348,14 +348,14 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | ULJS00339 | アマガミ |
 |  | ULJM05878 | 世界でいちばんNG（だめ）な恋 |
 |  | ULJM06119 | Dunamis15 |
-|  | NPJH50845 | 金色のコルダ３ AnotherSky feat.神南 |
-|  | NPJH50821 | 金色のコルダ３ フルボイス Special |
-|  | NPJH50846 | 金色のコルダ３ AnotherSky feat.至誠館 |
-|  | NPJH50847 | 金色のコルダ３ AnotherSky feat.天音学園 |
-|  | ULJM05624 | 金色のコルダ３ |
+|  | ULJM05054 | 金色のコルダ |
 |  | ULJM05428 | 金色のコルダ2 f |
 |  | ULJM05508 | 金色のコルダ２ f アンコール |
-|  | ULJM05054 | 金色のコルダ |
+|  | ULJM05624 | 金色のコルダ３ |
+|  | NPJH50821 | 金色のコルダ３ フルボイス Special |
+|  | NPJH50845 | 金色のコルダ３ AnotherSky feat.神南 |
+|  | NPJH50846 | 金色のコルダ３ AnotherSky feat.至誠館 |
+|  | NPJH50847 | 金色のコルダ３ AnotherSky feat.天音学園 |
 |  | NPJH50619 | Sol Trigger |
 |  | NPJH50505 | Fate/EXTRA CCC |
 |  | NPJH50247 | Fate/EXTRA |
@@ -381,9 +381,9 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | NPJH50127 | ときめきメモリアル4 |
 |  | ULJM05976 | ときめきメモリアル Girl's Side Premium 3 |
 |  | ULJM06393 | オメルタ～沈黙の掟～ THE LEGACY |
-|  | ULJM06131 | L.G.S～新説 封神演義～ |
-|  | ULJM05867 | S.Y.K ～蓮咲伝～ Portable |
 |  | ULJM05697 | S・Y・K ～新説西遊記～ ポータブル |
+|  | ULJM05867 | S.Y.K ～蓮咲伝～ Portable |
+|  | ULJM06131 | L.G.S～新説 封神演義～ |
 |  | ULJM06145 | 源狼 GENROH |
 |  | ULJM06129 | 十鬼の絆 関ヶ原奇譚 |
 |  | ULJM06301 | 十鬼の絆 花結綴り |
@@ -396,11 +396,11 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | ULJM06064 | アーメン・ノワール ポータブル |
 |  | ULJM05823 | デス・コネクション　ポータブル |
 |  | ULJM06289 | しらつゆの怪 |
-|  | NPJH50894 | 新装版クローバーの国のアリス～Wonderful Wonder World～ |
 |  | ULJM06216 | ダイヤの国のアリス～Wonderful Wonder World～ |
 |  | ULJM06295 | ダイヤの国のアリス～ Wonderful Mirror World ～ |
 |  | NPJH50872 | ハートの国のアリス～Wonderful Twin World～ |
 |  | ULJM06332 | 新装版 ハートの国のアリス～Wonderful Wonder World～ |
+|  | NPJH50894 | 新装版クローバーの国のアリス～Wonderful Wonder World～ |
 |  | ULJM06196 | Glass Heart Princess |
 |  | ULJM06309 | Glass Heart Princess:PLATINUM |
 |  | ULJM05447 | ウィル・オ・ウィスプ ポータブル |
@@ -442,9 +442,9 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | ULJM06373 | 裏語 薄桜鬼～暁の調べ～ |
 |  | ULJM05874 | メモリーズオフ ゆびきりの記憶 ふたりの風流庵 |
 |  | ULJM05875 | メモリーズオフ ゆびきりの記憶 |
+|  | ULJM05338 & ULJM05339 | CLANNAD |
 |  | NPJH50266 | ＣＬＡＮＮＡＤ　光見守る坂道で　上巻 |
 |  | NPJH50273 | ＣＬＡＮＮＡＤ　光見守る坂道で　下巻 |
-|  | ULJM05338 & ULJM05339 | CLANNAD |
 |  | NPJH50215 | 東京鬼祓師　鴉乃杜學園奇譚 |
 |  | ULJM05770 | 雅恋 ～MIYAKO～ |
 |  | ULJM06070 | 雅恋 ～MIYAKO～ あわゆきのうたげ |
@@ -802,8 +802,32 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | SLPM-66332 | 高円寺女子サッカー |
 |  | SLPS-25809 | 銀魂 銀さんと一緒！ボクのかぶき町日記 |
 |  | SLPM-62343 | THE 恋愛ホラーアドベンチャー～漂流少女～ |
+|  | SLPS-20352 | 好きなものは好きだからしょうがない！！ -FIRST LIMIT & TARGET†NIGHTS- Sukisho！ Episode ＃01+＃02 |
 |  | SLPS-20394 | 好きなものは好きだからしょうがない！！ -RAIN- Sukisyo！ Episode #03 |
 |  | SLPS-25871 | ドラスティックキラー |
+|  | SLPM-66458 | 風雨来記 |
+|  | SLPS-25679 | うたわれるもの 散りゆく者への子守唄 |
+|  | SLPS-25150 | Only you リベルクルス ドラマCD付き |
+|  | SLPM-66905 | D.C. ～ダ・カーポ～ the Origin |
+|  | SLPM-66437 | Soul Link EXTENSION |
+|  | SLPM-65396 | デ・ジ・キャラット ファンタジー エクセレント |
+|  | SLPM-66272 | I/O |
+|  | SLPM-66569 | シークレット・オブ・エヴァンゲリオン |
+|  | SLPM-55269 | PANDORA ～君の名前を僕は知る～ |
+|  | SLPM-66293 | 学園アリス ～きらきら★メモリーキッス～ |
+|  | SLPM-65481 | After...～忘れえぬ絆～ |
+|  | SLPS-25897 | ゼロの使い魔 迷子の終止符と幾千の交響曲 |
+|  | SLPM-55170 | スキップ・ビート |
+|  | SLPM-55163 | Myself; Yourself それぞれのfinale |
+|  | SLPM-55014 | ARIA The ORIGINATION ～蒼い惑星のエルシエロ～ |
+|  | SLPM-66536 | ARIA The NATURAL ～遠い記憶のミラージュ～ |
+|  | SLPM-55264 | 猛獣使いと王子様 |
+|  | SLPM-65843 | 120円の春 |
+|  | SLPM-66186 | ゲームになったよ！ドクロちゃん～健康診断大作戦～ |
+|  | SLPM-55213 | 地獄少女 澪縁 |
+|  | SLPM-66975 | エーデルブルーメ |
+|  | SLPM-55227 | セキレイ ～未来からのおくりもの～ |
+|  | SLPM-66513 | Fate/stay night[Realta Nua] |
 
 == PS3
 
