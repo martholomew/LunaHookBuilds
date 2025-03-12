@@ -21,7 +21,7 @@ TextThread::TextThread(ThreadParam tp, HookParam hp, std::optional<std::wstring>
 void TextThread::Start()
 {
 	CreateTimerQueueTimer(&timer, NULL, [](void *This, auto)
-						  { ((TextThread *)This)->Flush(); }, this, 10, 10, WT_EXECUTELONGFUNCTION);
+						  { ((TextThread *)This)->Flush(); }, this, 100, 100, WT_EXECUTELONGFUNCTION);
 }
 
 void TextThread::Stop()
@@ -118,6 +118,11 @@ void TextThread::Flush()
 		if (storage->size() > maxHistorySize)
 			storage->erase(0, storage->size() - maxHistorySize); // https://github.com/Artikash/Textractor/issues/127#issuecomment-486882983
 	}
+
+	static ULONGLONG lastFlushTime = 0;
+	if (lastPushTime <= lastFlushTime && queuedSentences->empty())
+		return;
+	lastFlushTime = GetTickCount64();
 
 	std::vector<std::wstring> sentences;
 	queuedSentences->swap(sentences);
