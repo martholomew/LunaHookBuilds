@@ -119,11 +119,6 @@ void TextThread::Flush()
 			storage->erase(0, storage->size() - maxHistorySize); // https://github.com/Artikash/Textractor/issues/127#issuecomment-486882983
 	}
 
-	static ULONGLONG lastFlushTime = 0;
-	if (lastPushTime <= lastFlushTime && queuedSentences->empty())
-		return;
-	lastFlushTime = GetTickCount64();
-
 	std::vector<std::wstring> sentences;
 	queuedSentences->swap(sentences);
 	for (auto &sentence : sentences)
