@@ -98,7 +98,8 @@ jobs:
       - run: python src/scripts/build_lunahook.py merge
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: LunaHook
+          tag_name: LunaHook v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
           files: src/cpp/build/Release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
