@@ -189,6 +189,17 @@ namespace ppsspp
 		strReplace(s, "\x81\x40");
 		buffer->from(s);
 	}
+	void ULJS00293(TextBuffer *buffer, HookParam *hp)
+	{
+		auto s = buffer->viewA();
+		if (s.find("(V") != s.npos)
+		{
+			buffer->from(s.substr(0, s.find("(V")));
+		}
+		CharFilter(buffer, '\n');
+		StringReplacer(buffer, TEXTANDLEN("\x04(DIO)"), TEXTANDLEN("\x83\x66\x83\x42\x83\x49"));
+		StringReplacer(buffer, TEXTANDLEN("\x04(MEL)"), TEXTANDLEN("\x83\x81\x83\x8b"));
+	}
 	void ULJS00124(TextBuffer *buffer, HookParam *hp)
 	{
 		CharFilter(buffer, '\n');
@@ -356,7 +367,6 @@ namespace ppsspp
 		*split = haveNamve;
 		buffer->from(s);
 	}
-
 	void ULJM06281(TextBuffer *buffer, HookParam *hp)
 	{
 		CharFilter(buffer, '\n');
@@ -1178,22 +1188,16 @@ namespace ppsspp
 	}
 	namespace
 	{
-#pragma optimize("", off)
-		void ULJM06115_C(const char *_) {}
-#pragma optimize("", on)
+		DECLARE_FUNCTION(ULJM06115_C, const char *_);
 		void ULJM06115(TextBuffer *buffer, HookParam *hpx)
 		{
 			auto s = buffer->strA();
 
-			if (!hpx->user_value)
-			{
-				hpx->user_value = 1;
-				HookParam hp;
-				hp.address = (uintptr_t)ULJM06115_C;
-				hp.offset = GETARG(1);
-				hp.type = USING_STRING;
-				NewHook(hp, "ULJM06115");
-			}
+			HookParam hp;
+			hp.address = (uintptr_t)ULJM06115_C;
+			hp.offset = GETARG(1);
+			hp.type = USING_STRING;
+			static auto _ = NewHook(hp, "ULJM06115");
 			ULJM06115_C(s.data());
 			buffer->clear();
 		}
@@ -1539,8 +1543,12 @@ namespace ppsspp
 		{0x881E560, {0, 1, 0, 0, 0, "ULJM05802"}},
 		// D.C. Girl's Symphony Pocket ～ダ・カーポ～ ガールズシンフォニーポケット
 		{0x883C77C, {0, 0, 0, 0, FULJM05690, "ULJM05690"}},
+		// D.C.III Plus ～ダ・カーポIII～プラス
+		{0x881301C, {0, 1, 0, 0, ULJM05770, "ULJM06239"}},
 		// Ever17 -the out of infinity- Premium Edition
 		{0x881AD64, {0, 0xd, 0, 0, 0, "ULJM05437"}},
+		// Never7 -the end of infinity-
+		{0x88196F0, {0, 0xe, 0, 0, ULJM05433, "ULJM05433"}},
 		// 24時の鐘とシンデレラ～Halloween Wedding～
 		{0x8838304, {0, 0, 0, 0, ULJS00124, "ULJM06168"}},
 		// １２時の鐘とシンデレラ～Halloween Wedding～
@@ -1588,8 +1596,6 @@ namespace ppsspp
 		{0x886CA94, {0, 0, 0, 0, NPJH50900, "NPJH50808"}}, // text
 		// 明治東亰恋伽 トワヰライト・キス
 		{0x884DE44, {0, 0, 0, 0, NPJH50900, "NPJH50900"}}, // text
-		// Never7 -the end of infinity-
-		{0x88196F0, {0, 0xe, 0, 0, ULJM05433, "ULJM05433"}},
 		// 青春はじめました！
 		{0x880a744, {0, 0, 0, 0, ULJM05943F, std::vector<const char *>{"ULJM06302", "ULJM06303"}}},
 		// アーメン・ノワール ポータブル
@@ -2050,8 +2056,6 @@ namespace ppsspp
 		{0x88649A0, {0, 0, 0, 0, ULJM06397, "ULJM05683"}},
 		// 英国探偵ミステリア
 		{0x887AE48, {0, 3, 0, 0, 0, "ULJS00563"}},
-		// D.C.III Plus ～ダ・カーポIII～プラス
-		{0x881301C, {0, 1, 0, 0, ULJM05770, "ULJM06239"}},
 		// 変態王子と笑わない猫。
 		{0x8964190, {CODEC_UTF16, 2, 0, 0, ULJM05282, "ULJM06305"}},
 		// Are you Alice?
@@ -2118,5 +2122,10 @@ namespace ppsspp
 		{0x883F9F4, {0, 1, 0, TNPJH50689, NPJH50689, "NPJH50689"}},
 		// Canvas3 ～七色の奇跡～
 		{0x886000C, {0, 0, 0, 0, ULJM05659, "ULJM05659"}},
+		// どこでもいっしょ
+		{0x8819C88, {0, 1, 0, 0, ULJS00124, "UCJS10002"}},
+		// テイルズ オブ ファンタジア なりきりダンジョンX
+		{0x88F45D0, {0, 5, 0, 0, ULJS00293, "ULJS00293"}},
+
 	};
 }

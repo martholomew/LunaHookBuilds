@@ -1,17 +1,16 @@
 # LunaTranslator
 
+> **一款galgame翻译器**
+ 
 ### 简体中文  | [English](README_en.md) | [Other Language](otherlang.md)
 
 ### [使用说明](https://docs.lunatranslator.org/) | [视频教程](https://space.bilibili.com/592120404/video) | [软件下载](https://docs.lunatranslator.org/README.html) | [![](https://img.shields.io/badge/QQ群-963119821-FF007C?style=for-the-badge)](https://qm.qq.com/q/I5rr3uEpi2) [![](https://img.shields.io/discord/1262692128031772733?label=Discord&logo=discord&color=FF007C&style=for-the-badge)](https://discord.com/invite/ErtDwVeAbB)
-
-
-> **一款galgame翻译器**
 
 ## 功能支持
 
 #### 文本输入
 
-- **HOOK** 支持使用HOOK方式获取文本。对于部分游戏引擎，还支持内嵌翻译。还支持提取部分[模拟器](https://docs.lunatranslator.org/emugames.html)上运行的游戏的文本。对于不支持或支持不好的游戏，请[提交反馈](https://github.com/HIllya51/LunaTranslator/issues/new?assignees=&labels=enhancement&projects=&template=01_game_request.yaml)
+- **HOOK** 支持使用HOOK方式获取文本。对于部分游戏引擎，还支持[内嵌翻译](https://docs.lunatranslator.org/embedtranslate.html)。还支持提取部分[模拟器](https://docs.lunatranslator.org/emugames.html)上运行的游戏的文本。对于不支持或支持不好的游戏，请[提交反馈](https://github.com/HIllya51/LunaTranslator/issues/new?assignees=&labels=enhancement&projects=&template=01_game_request.yaml)
 
 - **OCR** 支持 **[离线OCR](https://docs.lunatranslator.org/useapis/ocrapi.html)** ( 内置OCR引擎、WindowsOCR、Tesseract5、manga-ocr、WeChat/QQ OCR ) 和 **[在线OCR](https://docs.lunatranslator.org/useapis/ocrapi.html)** 
 
@@ -47,13 +46,11 @@
 
 - **Anki** 支持使用一键添加单词到anki中
 
-- **Yomitan等浏览器插件** 可以在软件内加载Yomitan等浏览器插件以辅助实现一些其他功能
+- **加载浏览器插件** 可以在软件内加载Yomitan等浏览器插件以辅助实现一些其他功能
 
- 
 ## 支持作者
 
 如果你感觉该软件对你有帮助，欢迎微信扫码赞助，谢谢，么么哒~
-
 <img src='../src/files/zan.jpg' style="height: 400px !important;">
 
 ## 开源许可
@@ -63,6 +60,7 @@ LunaTranslator使用 [GPLv3](../LICENSE) 许可证。
 <details>
 <summary>引用的项目</summary>
 
+* ![img](https://img.shields.io/github/license/Artikash/Textractor) [Artikash/Textractor](https://github.com/Artikash/Textractor)
 * ![img](https://img.shields.io/github/license/RapidAI/RapidOcrOnnx) [RapidAI/RapidOcrOnnx](https://github.com/RapidAI/RapidOcrOnnx)
 * ![img](https://img.shields.io/github/license/PaddlePaddle/PaddleOCR) [PaddlePaddle/PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
 * ![img](https://img.shields.io/github/license/Blinue/Magpie) [Blinue/Magpie](https://github.com/Blinue/Magpie)

@@ -6,7 +6,6 @@ from myutils.config import globalconfig, static_data
 from myutils.utils import nowisdark
 from gui.usefulwidget import (
     D_getsimplecombobox,
-    WebviewWidget,
     D_getspinbox,
     D_getcolorbutton,
     getIconButton,
@@ -88,6 +87,7 @@ def changeHorizontal_tool(self):
 def toolcolorchange():
     gobject.baseobject.translation_ui.refreshtooliconsignal.emit()
     gobject.baseobject.translation_ui.enterfunction()
+    gobject.baseobject.translation_ui.setbuttonsizeX()
     gobject.baseobject.translation_ui.set_color_transparency()
 
 

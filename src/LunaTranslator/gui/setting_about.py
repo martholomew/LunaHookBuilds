@@ -21,7 +21,6 @@ from gui.usefulwidget import (
 )
 from language import UILanguages, Languages
 from gui.dynalang import LLabel, LPushButton
-from gui.setting_year import yearsummary
 
 versionchecktask = queue.Queue()
 
@@ -88,8 +87,8 @@ def doupdate():
         gobject.getcachedir("Updater.exe"),
     )
     subprocess.Popen(
-        r".\cache\Updater.exe update {} .\cache\update\LunaTranslator{} {}".format(
-            int(gobject.baseobject.istriggertoupdate), bit, dynamiclink("{main_server}")
+        r".\cache\Updater.exe update {} .\cache\update\LunaTranslator{}".format(
+            int(gobject.baseobject.istriggertoupdate), bit
         )
     )
 
@@ -195,9 +194,11 @@ def versioncheckthread(self):
 
         uncompress(self, savep)
         gobject.baseobject.update_avalable = True
-        self.downloadprogress_cache = (_TR("准备完毕，等待更新"), 10000)
+        self.progresssignal4.emit(_TR("准备完毕，等待更新"), 10000)
         gobject.baseobject.showtraymessage(
-            sversion, _TR("准备完毕，等待更新") + "\n" + _TR("点击消息后退出并开始更新")
+            sversion,
+            _TR("准备完毕，等待更新") + "\n" + _TR("点击消息后退出并开始更新"),
+            gobject.baseobject.triggertoupdate,
         )
 
 
@@ -389,9 +390,10 @@ def setTab_update(self, basel):
     if version is None:
         versionstring = "unknown"
     else:
-        versionstring = ("v{}.{}.{}  {}").format(
-            version[0], version[1], version[2], platform.architecture()[0]
-        )
+        vs = ".".join(str(_) for _ in version)
+        if vs.endswith(".0"):
+            vs = vs[:-2]
+        versionstring = ("v{} {}").format(vs, platform.architecture()[0])
     inner, vis = [_.code for _ in UILanguages], [_.nativename for _ in UILanguages]
     grid2 = [
         [

@@ -3,7 +3,7 @@ from myutils.utils import getlangtgt, getlangsrc, getlanguse
 from myutils.config import _TR
 from myutils.wrapper import stripwrapper
 from language import Languages
-import requests, types, functools
+import requests, types
 
 
 class ArgsEmptyExc(Exception):
@@ -128,6 +128,10 @@ class commonbase(multikeyhelper):
     @property
     def proxy(self):
         return getproxy((self._globalconfig_key, self.typename))
+
+    @property
+    def is_src_auto(self):
+        return self.srclang_1 == Languages.Auto
 
     @property
     def srclang(self):

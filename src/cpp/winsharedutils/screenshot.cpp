@@ -65,7 +65,7 @@ std::optional<SimpleBMP> __gdi_screenshot(HWND hwnd, RECT rect)
         return {};
     auto bm = GetBitmap(rect, hdc);
     ReleaseDC(hwnd, hdc);
-    auto bmp = CreateBMP(bm);
+    auto bmp = CreateBMP(bm, false);
     if (!bmp)
         return {};
     if (std::all_of(bmp.value().pixels, bmp.value().pixels + bmp.value().pixelsize, std::bind(std::equal_to<unsigned char>(), std::placeholders::_1, 0)))
@@ -116,9 +116,9 @@ DECLARE_API void crop_image(HWND hwnd, RECT rect, void (*cb)(byte *, size_t))
     }
 }
 
-DECLARE_API RECT maximum_window()
+DECLARE_API void maximum_window(HWND hwnd)
 {
     RECT rect;
     GetVirtualDesktopRect(rect);
-    return rect; // MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, TRUE);
+    MoveWindow(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, TRUE);
 }

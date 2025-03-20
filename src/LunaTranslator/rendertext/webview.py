@@ -9,7 +9,7 @@ from rendertext.texttype import (
 import gobject, uuid, json, os, functools
 from urllib.parse import quote
 from myutils.config import globalconfig, static_data, _TR
-from myutils.wrapper import trypass, threader
+from myutils.wrapper import threader
 import copy
 from gui.usefulwidget import WebviewWidget
 
@@ -87,6 +87,7 @@ class TextBrowser(WebviewWidget, dataget):
         self.setfontstyle()
         self.setdisplayrank(globalconfig["displayrank"])
         self.sethovercolor(globalconfig["hovercolor"])
+        self.verticalhorizontal(globalconfig["verticalhorizontal"])
         self.parent().refreshcontent()
 
     def refreshcontent_before(self):
@@ -171,6 +172,9 @@ class TextBrowser(WebviewWidget, dataget):
 
     def showhideorigin(self, show):
         self.debugeval("showhideorigin({})".format(int(show)))
+
+    def verticalhorizontal(self, v):
+        self.debugeval("verticalhorizontal({})".format(int(v)))
 
     def showhideerror(self, show):
         self.debugeval("showhideerror({})".format(int(show)))

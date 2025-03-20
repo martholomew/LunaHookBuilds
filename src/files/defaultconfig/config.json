@@ -1,5 +1,4 @@
 {
-    "load_doc_everytimes": 0,
     "history": {
         "showorigin": true,
         "showtrans": true,
@@ -289,7 +288,8 @@
         "changecharset": false,
         "changecharset_charset": 2,
         "limittextlength_use": false,
-        "limittextlength_length": 40
+        "limittextlength_length": 40,
+        "clearText": false
     },
     "requestinterval": 0.5,
     "keepontop": true,
@@ -1216,7 +1216,6 @@
             "name": "GoogleTTS",
             "voice": "",
             "arg_not_sup": [
-                "rate",
                 "pitch"
             ]
         }
@@ -1402,7 +1401,7 @@
             }
         },
         "mdict": {
-            "use": false,
+            "use": true,
             "name": "MDict",
             "args": {
                 "paths": [],
@@ -1576,17 +1575,11 @@
             "color": "pink",
             "name": "Azure"
         },
-        "baidu_ai": {
+        "baidu": {
             "use": true,
             "color": "#ff65db",
             "useproxy": false,
-            "name": "百度_v2"
-        },
-        "baidu": {
-            "use": false,
-            "color": "#ff65db",
-            "useproxy": false,
-            "name": "百度_v1"
+            "name": "百度"
         },
         "bing": {
             "use": false,
@@ -1597,12 +1590,7 @@
         "google": {
             "use": false,
             "color": "#ff0000",
-            "name": "谷歌_v1"
-        },
-        "google2": {
-            "use": false,
-            "color": "#95a5ff",
-            "name": "谷歌_v2"
+            "name": "谷歌"
         },
         "ModernMt": {
             "use": false,
@@ -1632,7 +1620,7 @@
             "use": false,
             "useproxy": false,
             "color": "#95a5ff",
-            "name": "有道词典"
+            "name": "有道"
         },
         "caiyun": {
             "use": false,
@@ -1695,12 +1683,6 @@
             "use": false,
             "color": "#1839f0",
             "name": "LEC"
-        },
-        "youdao3": {
-            "use": false,
-            "color": "blue",
-            "useproxy": false,
-            "name": "有道"
         },
         "itrans": {
             "use": false,
@@ -1923,5 +1905,8 @@
     "viewlistpos": 0,
     "textoutput_origin": true,
     "textoutput_trans": false,
-    "wordlabel": []
+    "wordlabel": [],
+    "getWordFallbackClipboard": true,
+    "verticalhorizontal": false,
+    "noundictconfig_ex": []
 }

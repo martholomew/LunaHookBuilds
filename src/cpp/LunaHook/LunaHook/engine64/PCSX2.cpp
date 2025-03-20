@@ -143,16 +143,40 @@ namespace
         int padding;
         decltype(HookParam::text_fun) hookfunc;
         decltype(HookParam::filter_fun) filterfun;
-        const char *_id;
+        std::variant<const char *, std::vector<const char *>> _id;
     };
     std::unordered_map<uintptr_t, emfuncinfo> emfunctionhooks;
 
+    auto MatchGameId = [](const auto &idsv) -> const char *
+    {
+        if (const auto *id = std::get_if<const char *>(&idsv))
+        {
+            if (current_serial == *id)
+                return *id;
+            return nullptr;
+        }
+        else if (const auto *ids = std::get_if<std::vector<const char *>>(&idsv))
+        {
+            if (!current_serial.size())
+                return nullptr;
+            for (auto &&id : *ids)
+            {
+                if (current_serial == id)
+                {
+                    return id;
+                }
+            }
+            return nullptr;
+        }
+        return nullptr;
+    };
     void CheckForHook(uint64_t em_address, uintptr_t entrypoint)
     {
         if (emfunctionhooks.find(em_address) == emfunctionhooks.end())
             return;
         auto op = emfunctionhooks.at(em_address);
-        if (current_serial.size() && (current_serial != op._id))
+        auto useid = MatchGameId(op._id);
+        if (!useid)
             return;
         HookParam hpinternal;
         hpinternal.address = entrypoint;
@@ -166,7 +190,7 @@ namespace
         hpinternal.offset = op.offset;
         hpinternal.padding = op.padding;
         hpinternal.jittype = JITTYPE::PCSX2;
-        NewHook(hpinternal, op._id);
+        NewHook(hpinternal, useid);
     }
     std::set<uint32_t> recRecompileReady;
 }
@@ -203,24 +227,26 @@ bool PCSX2::attach_function()
             const GameList::Entry *entry = (GameList::Entry *)context->rdx;
             current_serial = entry->serial;
             jitaddrclear();
+            HostInfo(HOSTINFO::EmuGameName, "%s %s", entry->serial.c_str(), entry->title.c_str());
             for (auto &&[addr, op] : emfunctionhooks)
             {
-                if ((op._id == current_serial) && (op.type & DIRECT_READ))
-                {
-                    HookParam hpinternal;
-                    hpinternal.address = emu_addr(addr);
-                    hpinternal.emu_addr = addr;
-                    hpinternal.jittype = JITTYPE::PCSX2;
-                    hpinternal.type = op.type;
-                    hpinternal.codepage = 932;
-                    hpinternal.text_fun = op.hookfunc;
-                    hpinternal.filter_fun = op.filterfun;
-                    hpinternal.offset = op.offset;
-                    hpinternal.padding = op.padding;
-                    NewHook(hpinternal, op._id);
-                }
+                if (!(op.type & DIRECT_READ))
+                    continue;
+                auto useid = MatchGameId(op._id);
+                if (!useid)
+                    continue;
+                HookParam hpinternal;
+                hpinternal.address = emu_addr(addr);
+                hpinternal.emu_addr = addr;
+                hpinternal.jittype = JITTYPE::PCSX2;
+                hpinternal.type = op.type;
+                hpinternal.codepage = 932;
+                hpinternal.text_fun = op.hookfunc;
+                hpinternal.filter_fun = op.filterfun;
+                hpinternal.offset = op.offset;
+                hpinternal.padding = op.padding;
+                NewHook(hpinternal, useid);
             }
-            return HostInfo(HOSTINFO::EmuGameName, "%s %s", entry->serial.c_str(), entry->title.c_str());
         };
         succ = succ && NewHook(hp, "startGameListEntry");
     }
@@ -401,6 +427,16 @@ namespace
         }
         last = s;
     }
+    void SLPS25902(TextBuffer *buffer, HookParam *hp)
+    {
+        CharFilter(buffer, '\n');
+        StringFilter(buffer, TEXTANDLEN("/K"));
+        auto s = buffer->strA();
+        static std::string last;
+        if (last == s)
+            return buffer->clear();
+        last = s;
+    }
     void FSLPM66332(TextBuffer *buffer, HookParam *hp)
     {
         CharFilter(buffer, '\x01');
@@ -456,6 +492,145 @@ namespace
         strReplace(s, "\n");
         strReplace(s, "\x81\x40");
         buffer->from(s);
+    }
+    void SLPS25414(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        static std::string last;
+        auto len = *(int *)emu_addr(0x20AB10);
+        if (!len)
+            return;
+        auto strx = std::string((char *)emu_addr(0x20AB14), len);
+        std::string str;
+        for (auto i = 0; i < strx.size(); i++)
+        {
+            if (strx[i])
+            {
+                str += strx[i];
+            }
+            else
+            {
+                while (i % 4 != 3)
+                    i++;
+            }
+        }
+        auto parse = [](std::string str2)
+        {
+            strReplace(str2, "\\k\\n");
+            str2 = re::sub(str2, R"(\\p\d{4})");
+            return str2;
+        };
+        if (startWith(str, last))
+        {
+            buffer->from(parse(str.substr(last.size())));
+        }
+        else
+        {
+            buffer->from(parse(str));
+        }
+        last = str;
+    }
+    void SLPS25379(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        static std::string last;
+        static std::string lasts[2];
+        std::string collect;
+        auto addrs = {0xFA7436, 0xFA7480};
+        for (auto str : addrs)
+            collect += (char *)emu_addr(str);
+        if (last == collect)
+            return;
+        last = collect;
+        int i = -1;
+        collect = "";
+        for (auto str : addrs)
+        {
+            i++;
+            std::string x = (char *)emu_addr(str);
+            if (i && (lasts[i] == x))
+                break;
+            lasts[i] = x;
+            collect += x;
+        }
+        static std::string last1;
+        if (last1.size() && startWith(collect, last1))
+        {
+            buffer->from(collect.substr(last1.size()));
+        }
+        else
+        {
+            buffer->from((char *)emu_addr(0xFA73EC) + collect);
+        }
+        last1 = collect;
+    }
+    void SLPM66817(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        static std::string last;
+        static std::string lasts[3];
+        std::string collect;
+        auto addrs = {0xB9DDE4, 0xB9DE64, 0xB9DEE4};
+        for (auto str : addrs)
+            collect += (char *)emu_addr(str);
+        if (last == collect)
+            return;
+        last = collect;
+        int i = -1;
+        collect = "";
+        for (auto str : addrs)
+        {
+            i++;
+            std::string x = (char *)emu_addr(str);
+            if (i && (lasts[i] == x))
+                break;
+            lasts[i] = x;
+            collect += x;
+        }
+        static std::string last1;
+        if (last1.size() && startWith(collect, last1))
+        {
+            buffer->from(collect.substr(last1.size()));
+        }
+        else
+        {
+            buffer->from(std::string("\x81\x79") + (char *)emu_addr(0xB9DDC4) + "\x81\x7a" + collect);
+        }
+        last1 = collect;
+    }
+    void SLPS25220(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
+    {
+        static std::string last;
+        static std::string lasts[3];
+        std::string collect;
+        auto addrs = {0x312FDC, 0x31230E, 0x312340};
+        for (auto str : addrs)
+            collect += (char *)emu_addr(str);
+        if (last == collect)
+            return;
+        last = collect;
+        int i = -1;
+        collect = "";
+        for (auto str : addrs)
+        {
+            i++;
+            std::string x = (char *)emu_addr(str);
+            if (i && (lasts[i] == x))
+                break;
+            lasts[i] = x;
+            collect += x;
+        }
+        static std::string last1;
+        auto parse = [](std::string str2)
+        {
+            return strReplace(str2, "\x99\xa2", "\x81\x45");
+        };
+        if (startWith(collect, last1))
+        {
+            buffer->from(parse(collect.substr(last1.size())));
+        }
+        else
+        {
+            buffer->from(parse(collect));
+        }
+        last1 = collect;
     }
     void SLPS25150(hook_context *context, HookParam *hp1, TextBuffer *buffer, uintptr_t *split)
     {
@@ -610,6 +785,8 @@ namespace
             {0x1FFD934, {DIRECT_READ, 0, 0, 0, SLPS25897_1, "SLPS-25897"}},
             // スキップ・ビート
             {0x1CF70F0, {DIRECT_READ, 0, 0, 0, SLPM55170, "SLPM-55170"}},
+            // Myself;Yourself
+            {0x1CC6A18, {DIRECT_READ, 0, 0, 0, 0, std::vector<const char *>{"SLPM-66891", "SLPM-66892"}}}, // [通常版] && [初回限定版]
             // Myself; Yourself それぞれのfinale
             {0x1C785A8, {DIRECT_READ, 0, 0, 0, 0, "SLPM-55163"}},
             // ARIA The ORIGINATION ～蒼い惑星のエルシエロ～
@@ -640,6 +817,18 @@ namespace
             {0xAF1B3C, {DIRECT_READ, 0, 0, 0, SLPS25604, "SLPS-73263"}},
             // CLOCK ZERO ～終焉の一秒～
             {0x1A07855, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-55281"}},
+            // ToHeart2
+            {0x20AB10, {DIRECT_READ, 0, 0, SLPS25414, 0, "SLPS-25414"}},
+            // 仔羊捕獲ケーカク！ スイートボーイズライフ
+            {0x911CA2, {DIRECT_READ, 0, 0, 0, FSLPM65997, "SLPM-66582"}},
+            // Palais de Reine
+            {0xB9DDC4, {DIRECT_READ, 0, 0, SLPM66817, 0, "SLPM-66817"}},
+            // 東京魔人學園外法帖血風録
+            {0xFA73EC, {DIRECT_READ, 0, 0, SLPS25379, 0, std::vector<const char *>{"SLPS-25378", "SLPS-25379"}}},
+            // エリュシオン～永遠のサンクチュアリ～
+            {0x312FDC, {DIRECT_READ, 0, 0, SLPS25220, 0, "SLPS-25220"}},
+            // 純情ロマンチカ ～恋のドキドキ大作戦
+            {0x83907A, {DIRECT_READ, 0, 0, 0, SLPS25902, "SLPS-25902"}},
         };
         return 0;
     }();

@@ -59,7 +59,6 @@ from rendertext.texttype import TextType, SpecialColor, TranslateColor
 class MAINUI:
     def __init__(self) -> None:
         super().__init__()
-        self.freezeclipboard = False
         self.update_avalable = False
         self.translators = {}
         self.cishus = {}
@@ -630,14 +629,15 @@ class MAINUI:
                 gameuid = self.gameuid
                 if not gameuid:
                     break
-                if savehook_new_data[gameuid]["tts_follow_default"]:
+                if savehook_new_data[gameuid].get("tts_follow_default", True):
                     break
                 tts_repair_merge = savehook_new_data[gameuid].get(
                     "tts_repair_merge", False
                 )
                 tts_skip_merge = savehook_new_data[gameuid].get("tts_skip_merge", False)
                 if tts_skip_merge or tts_repair_merge:
-                    _this = copy.deepcopy(savehook_new_data[gameuid])
+                    _this = {"tts_repair_regex": [], "tts_skip_regex": []}
+                    _this.update(copy.deepcopy(savehook_new_data[gameuid]))
                     if tts_repair_merge:
                         _ = copy.deepcopy(globalconfig["ttscommon"]["tts_repair_regex"])
                         _this["tts_repair_regex"] += _
@@ -651,8 +651,8 @@ class MAINUI:
         return globalconfig["ttscommon"]
 
     def ttsrepair(self, text, usedict):
-        if usedict["tts_repair"]:
-            text = parsemayberegexreplace(usedict["tts_repair_regex"], text)
+        if usedict.get("tts_repair", False):
+            text = parsemayberegexreplace(usedict.get("tts_repair_regex", []), text)
         return text
 
     def matchwhich(self, dic: dict, res: str, isorigin: bool):
@@ -690,8 +690,8 @@ class MAINUI:
         return None
 
     def ttsskip(self, text, usedict, isorigin) -> dict:
-        if usedict["tts_skip"]:
-            return self.matchwhich(usedict["tts_skip_regex"], text, isorigin)
+        if usedict.get("tts_skip", False):
+            return self.matchwhich(usedict.get("tts_skip_regex", []), text, isorigin)
         return None
 
     @threader
@@ -1064,8 +1064,26 @@ class MAINUI:
         trayMenu.addAction(quitAction)
         self.tray.setContextMenu(trayMenu)
         self.tray.activated.connect(self.leftclicktray)
-        self.tray.messageClicked.connect(self.triggertoupdate)
+        self.tray.messageClicked.connect(self.__trayclicked)
+        self.trayclicked = print
         self.tray.show()
+        version = winsharedutils.queryversion(getcurrexe())
+        if "load_doc_or_log" not in globalconfig:
+            os.startfile(dynamiclink("{docs_server}"))
+        elif version != tuple(globalconfig["load_doc_or_log"]):
+            vs = ".".join(str(_) for _ in version)
+            if vs.endswith(".0"):
+                vs = vs[:-2]
+            self.showtraymessage(
+                "v" + vs,
+                _TR("更新记录"),
+                lambda: os.startfile(dynamiclink("{main_server}/ChangeLog")),
+            )
+
+        globalconfig["load_doc_or_log"] = version
+
+    def __trayclicked(self):
+        self.trayclicked()
 
     def triggertoupdate(self):
         self.istriggertoupdate = True
@@ -1075,8 +1093,13 @@ class MAINUI:
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.translation_ui.showhideui()
 
-    def showtraymessage(self, title, message):
-        self.tray.showMessage(title, message, getExeIcon(getcurrexe()))
+    def showtraymessage(self, title, message, callback):
+        self.trayclicked = callback
+        try:
+            self.tray.showMessage(title, message, getExeIcon(getcurrexe()))
+        except:
+            # xp版自定义icon不支持
+            self.tray.showMessage(title, message, QSystemTrayIcon.MessageIcon.NoIcon)
 
     def destroytray(self):
         self.tray.hide()
@@ -1206,10 +1229,6 @@ class MAINUI:
             startgame(startwithgameuid)
 
     def mainuiloadafter(self):
-        version = str(winsharedutils.queryversion(getcurrexe()))
-        if version != globalconfig["load_doc_everytimes"]:
-            os.startfile(dynamiclink("{docs_server}"))
-            globalconfig["load_doc_everytimes"] = version
         self.WindowMessageCallback_ptr = winsharedutils.WindowMessageCallback_t(
             self.WindowMessageCallback
         )

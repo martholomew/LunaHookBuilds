@@ -1,5 +1,4 @@
 from translator.basetranslator import basetrans
-from language import Languages
 import uuid
 
 
@@ -18,14 +17,13 @@ class TS(basetrans):
         path = "/translate"
         constructed_url = endpoint + path
         params = {"api-version": "3.0", "to": self.tgtlang}
-        if self.srclang != Languages.Auto:
+        if not self.is_src_auto:
             params.update({"from": self.srclang})
 
         headers = {
             "Ocp-Apim-Subscription-Key": key,
             # location required if you're using a multi-service or regional (not global) resource.
             "Ocp-Apim-Subscription-Region": location,
-            "Content-type": "application/json",
             "X-ClientTraceId": str(uuid.uuid4()),
         }
 

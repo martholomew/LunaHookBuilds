@@ -2,7 +2,8 @@ include_directories(. util engines)
 if(${CMAKE_SIZEOF_VOID_P} EQUAL 8) 
 	set(enginessrc 
 		BGI MKXPZ Ryujinx livecaptions Kincaid vita3k rpcs3 yuzu TYPEMOON UnrealEngine AGES7
-		Godot 5pb lucasystem LightVN V8 Artemis KiriKiri YOX CMVS Suika2 GameMaker PCSX2)
+		Godot 5pb lucasystem LightVN V8 Artemis KiriKiri YOX CMVS Suika2 GameMaker PCSX2
+		Chunsoft)
 	set(enginepath "engine64")
 	set(collector "enginecollection64.cpp")
 else()
@@ -24,7 +25,7 @@ else()
 		ShinyDaysGame MarineHeart ShinaRio CaramelBox UnisonShift Escude Ryokucha Alice Footy2
 		utawarerumono System4x Abalone Abel 5pb HorkEye XUSE Leaf Nekopack AXL AGS AdobeFlash10
 		FocasLens Tamamo Ages3ResT H_do_C RScript TYPEMOON TAKUYO MixwillSoft MerRouge GROOVER
-		SmartAdv)
+		SmartAdv Hug)
 	set(enginepath "engine32")
 	set(collector "enginecollection32.cpp")
 endif()

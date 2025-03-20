@@ -7,8 +7,10 @@ from myutils.config import (
     globalconfig,
     saveallconfig,
     _TR,
+    mayberelpath,
     savehook_new_data,
     savehook_new_list,
+    translatorsetting,
 )
 from myutils.magpie_builtin import MagpieBuiltin
 from gui.dialog_savedgame import dialog_setting_game
@@ -38,15 +40,32 @@ class IconLabelX(LLabel):
     clicked = pyqtSignal()
     rightclick = pyqtSignal()
 
+    @staticmethod
+    def w():
+        return (
+            globalconfig["buttonsize"]
+            * gobject.Consts.toolwdivh
+            * gobject.Consts.toolscale
+        )
+
+    @staticmethod
+    def h():
+        return globalconfig["buttonsize"] * gobject.Consts.toolscale
+
+    def setSize(self):
+        sz = (QSizeF(IconLabelX.w(), IconLabelX.h())).toSize()
+        self.setFixedSize(sz)
+
     def __init__(self, *argc):
         super().__init__(*argc)
         self.reflayout = None
+        self.belong = None
         self._icon = QIcon()
         self._size = QSize()
         self.setMouseTracking(True)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
-    def showinlayout(self, layout: QHBoxLayout):
+    def showinlayout(self, layout: QBoxLayout):
 
         layout.addWidget(self)
         self.show()
@@ -61,8 +80,7 @@ class IconLabelX(LLabel):
         self.hide()
 
     def resizeEvent(self, e: QResizeEvent):
-        h = int(e.size().height() / 1.5)
-        self.setFixedWidth(int(self.height() * 2 / 1.5))
+        h = int(e.size().height() / gobject.Consts.toolscale)
         self.setIconSize(QSize(h, h))
 
     def setIcon(self, icon: QIcon):
@@ -112,11 +130,20 @@ def str2rgba(string, alpha100):
 
 
 class ButtonBar(QFrame):
+    def setDirection(self, v):
+        self.v = v
+        direct = [QBoxLayout.Direction.LeftToRight, QBoxLayout.Direction.TopToBottom][v]
+        self.threelayout.setDirection(direct)
+        self._left.setDirection(direct)
+        self._center.setDirection(direct)
+        self._right.setDirection(direct)
+
     def __init__(self, *argc):
         super().__init__(*argc)
+        self.v = False
 
-        def __(p=None, pp=None):
-            _ = QHBoxLayout(pp)
+        def __(p: QBoxLayout = None, pp=None):
+            _ = QBoxLayout(QBoxLayout.Direction.LeftToRight, pp)
             _.setContentsMargins(0, 0, 0, 0)
             _.setSpacing(0)
             if p is not None:
@@ -224,7 +251,7 @@ class ButtonBar(QFrame):
         __ = [self._left, self._right, self._center]
         cnt = 0
         for name in globalconfig["toolbutton"]["rank2"]:
-            button = self.buttons[name]
+            button: IconLabelX = self.buttons[name]
             if button.belong:
                 hide = True
                 for k in button.belong:
@@ -243,7 +270,7 @@ class ButtonBar(QFrame):
             ):
                 button.hideinlayout()
                 continue
-            layout: QHBoxLayout = __[
+            layout: QBoxLayout = __[
                 globalconfig["toolbutton"]["buttons"][name]["align"]
             ]
             button.showinlayout(layout)
@@ -252,8 +279,25 @@ class ButtonBar(QFrame):
         self.adjustminwidth()
 
     def adjustminwidth(self):
-        w = self.cntbtn * self.height() * 2 / 1.5
-        self.parent().setMinimumWidth(int(w))
+        p: QWidget = self.parent()
+        if self.v:
+            w = self.cntbtn * IconLabelX.h()
+            p.setMinimumHeight(int(w))
+            p.setMinimumWidth(self.width() * 2)
+        else:
+            w = self.cntbtn * IconLabelX.w()
+            p.setMinimumWidth(int(w))
+            p.setMinimumHeight(self.height() * 2)
+
+    def setbuttonsize(self):
+
+        if globalconfig["verticalhorizontal"]:
+            self.setFixedWidth(int(IconLabelX.w()))
+        else:
+            self.setFixedHeight(int(IconLabelX.h()))
+        for _ in self.buttons:
+            btn: IconLabelX = self.buttons[_]
+            btn.setSize()
 
 
 class TranslatorWindow(resizableframeless):
@@ -284,6 +328,28 @@ class TranslatorWindow(resizableframeless):
     magpiecallback = pyqtSignal(bool)
     clipboardcallback = pyqtSignal(bool, str)
     internaltexthide = pyqtSignal(bool)
+
+    def setbuttonsizeX(self):
+        self.changeextendstated()
+        if globalconfig["verticalhorizontal"]:
+            self.titlebar.move(self.width() - self.titlebar.width(), 0)
+        else:
+            self.titlebar.move(0, 0)
+
+    def verticalhorizontal(self, v):
+        self.changeextendstated()
+        self.titlebar.setDirection(v)
+        self.translate_text.verticalhorizontal(v)
+        if v:
+            self.titlebar.setFixedHeight(self.height())
+            self.titlebar.setFixedWidth(int(IconLabelX.w()))
+            self.titlebar.move(self.width() - self.titlebar.width(), 0)
+        else:
+            self.titlebar.move(0, 0)
+            self.titlebar.setFixedWidth(self.width())
+            self.titlebar.setFixedHeight(int(IconLabelX.h()))
+        self.titlebar.adjustminwidth()
+        self.enterfunction()
 
     @threader
     def tracewindowposthread(self):
@@ -399,7 +465,7 @@ class TranslatorWindow(resizableframeless):
             clear = False
         self.showline(clear=clear, text=res, color=color, texttype=t)
 
-    def cleartext(self, text):
+    def cleartext(self, text: str):
         text = text.replace("\t", " ")
         text = text.replace("\r", "\n")
         text = text.replace("\u2028", "\n")
@@ -494,10 +560,9 @@ class TranslatorWindow(resizableframeless):
             self.hide_()
 
     def refreshtoolicon(self):
-        self.titlebar.setFixedHeight(int(globalconfig["buttonsize"] * 1.5))
+        self.titlebar.setbuttonsize()
         self.titlebar.adjustminwidth()
         self.titlebar.refreshtoolicon()
-        self.setMinimumHeight(self.titlebar.height() * 2)
         self.set_color_transparency()
         self.seteffect()
         self.changeextendstated()
@@ -545,14 +610,14 @@ class TranslatorWindow(resizableframeless):
         gameuid = gobject.baseobject.gameuid
         maps = {}
         if gameuid:
-            for name, link in savehook_new_data[gameuid]["relationlinks"]:
+            for name, link in savehook_new_data[gameuid].get("relationlinks", []):
                 act = QAction(name, menu)
                 maps[act] = link
                 menu.addAction(act)
         if (
             globalconfig["relationlinks"]
             and gameuid
-            and savehook_new_data[gameuid]["relationlinks"]
+            and savehook_new_data[gameuid].get("relationlinks", [])
         ):
             menu.addSeparator()
         for name, link in globalconfig["relationlinks"]:
@@ -815,9 +880,14 @@ class TranslatorWindow(resizableframeless):
 
     def changeextendstated(self):
         dh = self.dynamicextraheight()
-        self.translate_text.move(0, dh)
-        height = self.height() - dh
-        self.translate_text.resize(self.width(), int(height))
+        if globalconfig["verticalhorizontal"]:
+            self.translate_text.move(0, 0)
+            height = self.width() - dh
+            self.translate_text.resize(int(height), self.height())
+        else:
+            self.translate_text.move(0, dh)
+            height = self.height() - dh
+            self.translate_text.resize(self.width(), int(height))
 
     def hide_(self):
         if globalconfig["showintab"]:
@@ -1015,7 +1085,7 @@ class TranslatorWindow(resizableframeless):
         self.initsignals()
         self.titlebar = ButtonBar(self)
         self.titlebar.move(0, 0)  # 多显示屏下，谜之错位
-        self.titlebar.setFixedHeight(int(globalconfig["buttonsize"] * 1.5))
+        self.titlebar.setbuttonsize()
         self.titlebar.setObjectName("titlebar")
         self.titlebar.setMouseTracking(True)
         self.addbuttons()
@@ -1038,14 +1108,87 @@ class TranslatorWindow(resizableframeless):
         t.timeout.connect(self.__betterenterevent)
         t.start()
         self.adjustbuttons = self.titlebar.adjustbuttons
+        self.verticalhorizontal(globalconfig["verticalhorizontal"])
 
-    def dropfilecallback(self, file: str):
-        if not (file.lower().endswith(".exe") or file.lower().endswith(".lnk")):
-            return
+    def __parsedropexe(self, file):
         uid = find_or_create_uid(savehook_new_list, file)
         if uid not in savehook_new_list:
             savehook_new_list.insert(0, uid)
         startgame(uid)
+        self.displaystatus.emit(
+            _TR("启动游戏_ " + savehook_new_data[uid]["title"]), TextType.Info
+        )
+
+    def __parsedropmecab(self, file):
+        isfile = os.path.isfile(file)
+        flow = os.path.basename(file).lower()
+        if isfile and flow == "dicrc":
+            file = os.path.dirname(file)
+        filer = mayberelpath(file)
+        globalconfig["hirasetting"]["mecab"]["args"]["path"] = filer
+        self.displaystatus.emit(_TR("成功设置_Mecab_路径_ " + filer), TextType.Info)
+
+    def __parsedropmdx(self, file):
+        isfile = os.path.isfile(file)
+        flow = os.path.basename(file).lower()
+        if isfile and flow == "dicrc":
+            file = os.path.dirname(file)
+        filer = mayberelpath(file)
+        if filer not in globalconfig["cishu"]["mdict"]["args"]["paths"]:
+            globalconfig["cishu"]["mdict"]["args"]["paths"].append(filer)
+        self.displaystatus.emit(_TR("成功添加_MDict_ " + filer), TextType.Info)
+
+    def __parsedropjson(self, file):
+        try:
+            gameuid = gobject.baseobject.gameuid
+            _path = savehook_new_data[gameuid].get("gamejsonfile", [])
+            if isinstance(_path, str):
+                _path = [_path]
+            filer = mayberelpath(file)
+            if filer not in _path:
+                _path.append(filer)
+                savehook_new_data[gameuid]["gamejsonfile"] = _path
+                self.displaystatus.emit(
+                    _TR("成功添加_Mecab_路径_ " + filer), TextType.Info
+                )
+        except:
+            print_exc()
+
+            _path = translatorsetting["rengong"]["args"]["jsonfile"]
+            filer = mayberelpath(file)
+            if filer not in _path:
+                _path.append(filer)
+                translatorsetting["rengong"]["args"]["jsonfile"] = _path
+                self.displaystatus.emit(
+                    _TR("成功添加_json翻译文件_ " + filer), TextType.Info
+                )
+
+    def dropfilecallback(self, file: str):
+        isfile = os.path.isfile(file)
+        flow = os.path.basename(file).lower()
+        checks = [
+            (
+                lambda: (isfile and flow == "dicrc")
+                or ((not isfile) and os.path.isfile(os.path.join(file, "dicrc"))),
+                self.__parsedropmecab,
+            ),
+            (
+                lambda: (isfile and flow.endswith(".mdx")),
+                self.__parsedropmdx,
+            ),
+            (lambda: isfile and flow.endswith(".json"), self.__parsedropjson),
+            (
+                lambda: isfile and (flow.endswith(".exe") or flow.endswith(".lnk")),
+                self.__parsedropexe,
+            ),
+        ]
+        for checkf, do in checks:
+            if checkf():
+                try:
+                    do(file)
+                except:
+                    print_exc()
+                break
 
     def showEvent(self, e):
         if not self.firstshow:
@@ -1305,11 +1448,17 @@ class TranslatorWindow(resizableframeless):
             self.refreshtoolicon()
 
     def dynamicextraheight(self):
-        if globalconfig["WindowEffect"] == 0:
 
-            return self.titlebar.height()
+        if globalconfig["WindowEffect"] == 0:
+            if globalconfig["verticalhorizontal"]:
+                return int(IconLabelX.w())
+            else:
+                return int(IconLabelX.h())
         if globalconfig["locktools"]:
-            return self.titlebar.height()
+            if globalconfig["verticalhorizontal"]:
+                return int(IconLabelX.w())
+            else:
+                return int(IconLabelX.h())
 
         return 0
 
@@ -1335,6 +1484,8 @@ class TranslatorWindow(resizableframeless):
         if self.translate_text.cleared:
             return
         if not globalconfig["adaptive_height"]:
+            return
+        if globalconfig["verticalhorizontal"]:
             return
         limit = min(size.height(), self.screen().geometry().height())
         newHeight = limit + self.dynamicextraheight()
@@ -1463,11 +1614,19 @@ class TranslatorWindow(resizableframeless):
     def resizeEvent(self, e: QResizeEvent):
         super().resizeEvent(e)
         wh = self.dynamicextraheight()
-        height = self.height() - wh
 
-        self.translate_text.resize(self.width(), int(height))
-        if e.oldSize().width() != e.size().width():
-            self.titlebar.setFixedWidth(self.width())
+        if globalconfig["verticalhorizontal"]:
+            height = self.width() - wh
+            self.translate_text.resize(int(height), self.height())
+            self.translate_text.move(0, 0)
+            if e.oldSize().height() != e.size().height():
+                self.titlebar.setFixedHeight(self.height())
+            self.titlebar.move(self.width() - self.titlebar.width(), 0)
+        else:
+            height = self.height() - wh
+            self.translate_text.resize(self.width(), int(height))
+            if e.oldSize().width() != e.size().width():
+                self.titlebar.setFixedWidth(self.width())
 
     def tryremoveuseless(self):
         try:

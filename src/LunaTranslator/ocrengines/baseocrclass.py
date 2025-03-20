@@ -1,6 +1,5 @@
 from myutils.config import globalconfig, ocrsetting, ocrerrorfix, _TR, isascii
 from myutils.commonbase import commonbase
-from language import Languages
 import re
 
 
@@ -108,13 +107,12 @@ class baseocr(commonbase):
         juhe.sort(key=lambda x: mids[x[0]][mids_idx], reverse=vertical)
         lines = []
         for _j in juhe:
-            lines.append(" ".join([texts[_] for _ in _j]))
+            lines.append(self.space_1.join([texts[_] for _ in _j]))
         return lines
 
     ########################################################
     def raise_cant_be_auto_lang(self):
-        l = self.srclang_1
-        if l == Languages.Auto:
+        if self.is_src_auto:
             raise Exception(_TR("当前OCR引擎不支持设置语言为自动"))
 
     def __init__(self, typename):

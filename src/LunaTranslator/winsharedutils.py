@@ -15,7 +15,6 @@ from ctypes import (
     c_double,
     c_char,
     CFUNCTYPE,
-    WinDLL,
 )
 from ctypes.wintypes import WORD, HWND, DWORD, RECT, HANDLE, UINT, BOOL, LONG, LPCWSTR
 import platform, windows, functools, os, re
@@ -273,7 +272,7 @@ def crop_image(x1, y1, x2, y2, hwnd=None):
 
 
 maximum_window = utilsdll.maximum_window
-maximum_window.restype = RECT
+maximum_window.argtypes = (HWND,)
 setbackdropX = utilsdll.setbackdropX
 setbackdropX.argtypes = HWND, c_bool, c_bool
 setAeroEffect = utilsdll.setAeroEffect

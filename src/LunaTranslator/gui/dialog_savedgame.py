@@ -379,7 +379,7 @@ class ItemWidget(QWidget):
         self.l.setContentsMargins(
             *([globalconfig["dialog_savegame_layout"]["margin2"]] * 4)
         )
-        for image in savehook_new_data[gameuid]["imagepath_all"]:
+        for image in savehook_new_data[gameuid].get("imagepath_all",[]):
             fr = extradatas["imagefrom"].get(image)
             if fr:
                 targetmod.get(fr).dispatchdownloadtask(image)
@@ -619,8 +619,8 @@ class dialog_savedgame_new(QWidget):
             i = calculatetagidx(self.reftagid)
             savegametaged.pop(i)
             self.loadcombo(False)
-            uid = self.vislistcombo.getIndexData(self.vislistcombo.currentIndex())
-            self.resetcurrvislist(uid)
+            self.reftagid = self.vislistcombo.getIndexData(self.vislistcombo.currentIndex())
+            self.reflist = getreflist(self.reftagid)
 
     def directshow(self):
         self.flow.directshow()
@@ -700,8 +700,8 @@ class dialog_savedgame_new(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.__layout = layout
         self.loadcombo(True)
-        self.reflist = getreflist(globalconfig["currvislistuid"])
-        self.reftagid = globalconfig["currvislistuid"]
+        self.reftagid = self.vislistcombo.getIndexData(self.vislistcombo.currentIndex())
+        self.reflist = getreflist(self.reftagid)
 
         self.tagswidget = TagWidget(self, exfoucus=False)
 

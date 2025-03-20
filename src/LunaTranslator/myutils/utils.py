@@ -1,11 +1,9 @@
-import windows
 import os, time
 import codecs, hashlib, shutil
 import socket, gobject, uuid, functools
 import importlib, json, requests
 from qtsymbols import *
 from string import Formatter
-from ctypes import cast, c_char, POINTER
 from traceback import print_exc
 from myutils.config import (
     _TR,
@@ -22,7 +20,7 @@ from myutils.keycode import vkcode_map, mod_map
 from language import Languages
 import threading, winreg
 import re, heapq, winsharedutils
-from myutils.wrapper import tryprint, threader
+from myutils.wrapper import tryprint
 from html.parser import HTMLParser
 from myutils.audioplayer import bass_code_cast
 
@@ -86,7 +84,7 @@ def __internal__getlang(k1: str, k2: str) -> str:
             gameuid = gobject.baseobject.gameuid
             if not gameuid:
                 break
-            if savehook_new_data[gameuid]["lang_follow_default"]:
+            if savehook_new_data[gameuid].get("lang_follow_default", True):
                 break
 
             return savehook_new_data[gameuid][k1]
@@ -551,10 +549,10 @@ def postusewhich(name1):
             gameuid = gobject.baseobject.gameuid
             if not gameuid:
                 break
-            if savehook_new_data[gameuid]["transoptimi_followdefault"]:
+            if savehook_new_data[gameuid].get("transoptimi_followdefault", True):
                 break
-            if savehook_new_data[gameuid][name2]:
-                if savehook_new_data[gameuid][merge]:
+            if savehook_new_data[gameuid].get(name2, False):
+                if savehook_new_data[gameuid].get(merge, False):
                     return 3
                 return 2
             else:

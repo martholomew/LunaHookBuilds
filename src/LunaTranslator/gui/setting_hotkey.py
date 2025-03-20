@@ -42,13 +42,7 @@ def autoreadswitch(self):
 def safeGet():
 
     t = winsharedutils.GetSelectedText()
-    if t is None:
-        gobject.baseobject.freezeclipboard = True
-        windows.keybd_event(67, 0, 0, 0)
-        windows.keybd_event(windows.VK_CONTROL, 0, 0, 0)
-        time.sleep(0.1)
-        windows.keybd_event(windows.VK_CONTROL, 0, windows.KEYEVENTF_KEYUP, 0)
-        windows.keybd_event(67, 0, windows.KEYEVENTF_KEYUP, 0)
+    if (t is None) and (globalconfig["getWordFallbackClipboard"]):
         t = winsharedutils.clipboard_get()
     if 0:
         QToolTip.showText(

@@ -51,7 +51,7 @@ class AnkiWindow(QWidget):
     refreshhtml = pyqtSignal()
     settextsignal = pyqtSignal(QObject, str)
 
-    def settextsignalf(self, obj, text):
+    def settextsignalf(self, obj: QLineEdit, text):
         obj.setText(text)
 
     def callbacktts(self, edit, sig, data):
@@ -99,16 +99,21 @@ class AnkiWindow(QWidget):
         def ocroncefunction(rect, img=None):
             if not img:
                 img = imageCut(0, rect[0][0], rect[0][1], rect[1][0], rect[1][1])
+            if img.isNull():
+                return
             fname = gobject.gettempdir(str(uuid.uuid4()) + "." + getimageformat())
             img.save(fname)
             self.settextsignal.emit(self.editpath, os.path.abspath(fname))
             if globalconfig["ankiconnect"]["ocrcroped"]:
                 self.asyncocr(img)
+
+        def __ocroncefunction(rect, img=None):
+            ocroncefunction(rect, img=img)
             if s:
                 gobject.baseobject.translation_ui.move(currpos)
                 self.window().move(currpos2)
 
-        rangeselct_function(ocroncefunction)
+        rangeselct_function(__ocroncefunction)
 
     def __init__(self, p) -> None:
         super().__init__()
@@ -1159,6 +1164,11 @@ class searchwordW(closeashidewindow):
     def showEvent(self, e):
         super().showEvent(e)
         self.__load()
+        self.activate()
+
+    def activate(self):
+        self.activateWindow()
+        self.searchtext.setFocus()
 
     @tryprint
     def __show_dict_result_function(self, timestamp, k, res):
@@ -1478,7 +1488,7 @@ class searchwordW(closeashidewindow):
             res.insert(idx, {"dict": k, "content": v})
         return res
 
-    def __click_word_search_function(self, word, append):
+    def __click_word_search_function(self, word: str, append):
         self.showNormal()
         if self.state != 2:
             return
@@ -1486,6 +1496,7 @@ class searchwordW(closeashidewindow):
         if append:
             word = self.searchtext.text() + word
         self.searchtext.setText(word)
+        self.activate()
         self.search(word)
         self.ankiwindow.example.setPlainText(gobject.baseobject.currenttext)
         if globalconfig["ankiconnect"]["autoruntts"]:
@@ -1507,7 +1518,7 @@ class searchwordW(closeashidewindow):
         self.historys.insert(0, word)
         self.history_btn.setEnabled(True)
 
-    def search(self, word):
+    def search(self, word: str):
         current = time.time()
         self.current = current
         word = word.strip()

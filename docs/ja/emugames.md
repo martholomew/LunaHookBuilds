@@ -298,6 +298,7 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | 01000A7019EBC000 | 流行り神 １ |
 |  | 0100B4D019EBE000 | 流行り神２ |
 |  | 01005BB019EC0000 | 流行り神 ３ |
+|  | 010095B01AF94000 | 流行り神 １・２・３パック |
 |  | 010005F00E036000 | 真 流行り神１・２パック |
 |  | 0100AA1013B96000 | 真流行り神3 |
 |  | 01001E601F6B8000 | 制服カノジョ まよいごエンゲージ |
@@ -317,6 +318,17 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | 01004BD01639E000 | ビルシャナ戦姫 ～一樹の風～ |
 |  | 01003B300E4AA000 | THE GRISAIA TRILOGY |
 |  | 010033100EE12000 | りゅうおうのおしごと！ |
+|  | 010059D020670000 | うたわれるもの 偽りの仮面 |
+|  | 0100CF502066E000 | うたわれるもの 散りゆく者への子守唄 |
+|  | 0100345020672000 | うたわれるもの 二人の白皇 |
+|  | 0100A89019EEC000 | さくら、もゆ。-as the Night's, Reincarnation- |
+|  | 010039F0202BC000 | 神椿市建設中。REGENERATE |
+|  | 01009A401E186000 | ヒプノシスマイク -Alternative Rap Battle- 1st period |
+|  | 010081E0161B2000 | D.C.4 Fortunate Departures ～ダ・カーポ4～ フォーチュネイトデパーチャーズ |
+|  | 010048101D49E000 | Re;quartz零度 |
+|  | 0100B6501FE4C000 | 喧嘩番長 乙女 ダブルパック |
+|  | 010008401AB4A000 | Yukar From The Abyss |
+|  | 010047E01E22A000 | Voice Love on Air |
 
 == PSP
 
@@ -371,7 +383,9 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | NPJH50243 | ティアーズ・トゥ・ティアラ 外伝 アヴァロンの謎 ＰＯＲＴＡＢＬＥ |
 |  | ULJM05802 | 薔薇ノ木ニ薔薇ノ花咲ク |
 |  | ULJM05690 | D.C. Girl's Symphony Pocket ～ダ・カーポ～ ガールズシンフォニーポケット |
+|  | ULJM06239 | D.C.III Plus ～ダ・カーポIII～プラス |
 |  | ULJM05437 | Ever17 -the out of infinity- Premium Edition |
+|  | ULJM05433 | Never7 -the end of infinity- |
 |  | ULJM06168 | 24時の鐘とシンデレラ～Halloween Wedding～ |
 |  | ULJM06023 | １２時の鐘とシンデレラ～Halloween Wedding～ |
 |  | ULJM06272 | 0時の鐘とシンデレラ～Halloween Wedding～ |
@@ -391,7 +405,6 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | ULJS00316 | ティンクル☆くるせいだーす GoGo! |
 |  | NPJH50808 | 明治東亰恋伽 |
 |  | NPJH50900 | 明治東亰恋伽 トワヰライト・キス |
-|  | ULJM05433 | Never7 -the end of infinity- |
 |  | ULJM06302 & ULJM06303 | 青春はじめました！ |
 |  | ULJM06064 | アーメン・ノワール ポータブル |
 |  | ULJM05823 | デス・コネクション　ポータブル |
@@ -601,7 +614,6 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | ULJM06224 | Stellar☆Theater Portable |
 |  | ULJM05683 | Starry☆Sky ～in Spring～ Portable |
 |  | ULJS00563 | 英国探偵ミステリア |
-|  | ULJM06239 | D.C.III Plus ～ダ・カーポIII～プラス |
 |  | ULJM06305 | 変態王子と笑わない猫。 |
 |  | ULJM05848 | Are you Alice? |
 |  | ULJM05768 | 加奈～いもうと～ |
@@ -634,6 +646,8 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | ULJM05986 | アンジェリーク 魔恋の六騎士 |
 |  | NPJH50689 | MISSINGPARTS the TANTEI stories Complete |
 |  | ULJM05659 | Canvas3 ～七色の奇跡～ |
+|  | UCJS10002 | どこでもいっしょ |
+|  | ULJS00293 | テイルズ オブ ファンタジア なりきりダンジョンX |
 
 == PSV
 
@@ -818,6 +832,7 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | SLPM-65481 | After...～忘れえぬ絆～ |
 |  | SLPS-25897 | ゼロの使い魔 迷子の終止符と幾千の交響曲 |
 |  | SLPM-55170 | スキップ・ビート |
+|  | SLPM-66891 & SLPM-66892 | Myself;Yourself |
 |  | SLPM-55163 | Myself; Yourself それぞれのfinale |
 |  | SLPM-55014 | ARIA The ORIGINATION ～蒼い惑星のエルシエロ～ |
 |  | SLPM-66536 | ARIA The NATURAL ～遠い記憶のミラージュ～ |
@@ -833,6 +848,12 @@ LunaTranslatorは、シミュレーターHOOKを通じてNS/PSP/PSV/PS3上の多
 |  | SLPS-25819 | アルトネリコ2 世界に響く少女たちの創造詩 |
 |  | SLPS-73263 | アルトネリコ2 世界に響く少女たちの創造詩 [PlayStation2 the Best] |
 |  | SLPM-55281 | CLOCK ZERO ～終焉の一秒～ |
+|  | SLPS-25414 | ToHeart2 |
+|  | SLPM-66582 | 仔羊捕獲ケーカク！ スイートボーイズライフ |
+|  | SLPM-66817 | Palais de Reine |
+|  | SLPS-25378 & SLPS-25379 | 東京魔人學園外法帖血風録 |
+|  | SLPS-25220 | エリュシオン～永遠のサンクチュアリ～ |
+|  | SLPS-25902 | 純情ロマンチカ ～恋のドキドキ大作戦 |
 
 == PS3
 

@@ -7,7 +7,6 @@ from winsharedutils import Is64bit
 from myutils.config import (
     globalconfig,
     savehook_new_data,
-    static_data,
     findgameuidofpath,
     getlanguse,
     _TR,
@@ -18,8 +17,7 @@ from myutils.kanjitrans import kanjitrans
 from myutils.hwnd import injectdll, ListProcess, getpidexe
 from myutils.wrapper import threader
 from traceback import print_exc
-import subprocess, requests
-from myutils.proxy import getproxy
+import subprocess
 from ctypes import (
     CDLL,
     CFUNCTYPE,
@@ -129,41 +127,39 @@ EmbedCallback = CFUNCTYPE(None, c_wchar_p, ThreadParam)
 QueryHistoryCallback = CFUNCTYPE(None, c_wchar_p)
 
 
-def splitembedlines(trans: str):
-    if len(trans) and globalconfig["embedded"]["limittextlength_use"]:
-        length = globalconfig["embedded"]["limittextlength_length"]
-        lines = trans.split("\n")
-        newlines = []
-        space = getlangtgt().space
-        for line in lines:
-            line = line.split(space) if space else line
-            while len(line):
-                newlines.append(space.join(line[:length]))
-                line = line[length:]
-        trans = "\n".join(newlines)
-    return trans
-
-
 class texthook(basetext):
 
     @property
+    def embedconfig(self):
+        if self.hconfig.get("embed_follow_default", True):
+            return globalconfig["embedded"]
+
+        class __shitdict(dict):
+            def __getitem__(self, key):
+                if key in self:
+                    return super().__getitem__(key)
+                else:
+                    return globalconfig["embedded"][key]
+
+        return __shitdict(self.hconfig["embed_setting_private"])
+
+    @property
     def config(self):
-        try:
-            df = savehook_new_data[self.gameuid]["hooksetting_follow_default"]
-        except:
-            df = True
-        if df:
+        if self.hconfig.get("hooksetting_follow_default", True):
             return globalconfig
-        else:
 
-            class __shitdict(dict):
-                def __getitem__(self, key):
-                    if key in self:
-                        return super().__getitem__(key)
-                    else:
-                        return globalconfig[key]
+        class __shitdict(dict):
+            def __getitem__(self, key):
+                if key in self:
+                    return super().__getitem__(key)
+                else:
+                    return globalconfig[key]
 
-            return __shitdict(savehook_new_data[self.gameuid]["hooksetting_private"])
+        return __shitdict(self.hconfig["hooksetting_private"])
+
+    @property
+    def hconfig(self):
+        return savehook_new_data.get(self.gameuid, {})
 
     def init(self):
 
@@ -249,6 +245,7 @@ class texthook(basetext):
             c_bool,
             c_wchar_p,
             c_uint32,
+            c_bool,
             c_bool,
         )
         self.Luna_checkisusingembed = LunaHost.Luna_checkisusingembed
@@ -370,9 +367,9 @@ class texthook(basetext):
         )
         self.startsql(sqlitef)
         if autostart:
-            autostarthookcode = savehook_new_data[gameuid]["hook"]
-            needinserthookcode = savehook_new_data[gameuid]["needinserthookcode"]
-            injecttimeout = savehook_new_data[gameuid]["inserthooktimeout"] / 1000
+            autostarthookcode = self.hconfig.get("hook", [])
+            needinserthookcode = self.hconfig.get("needinserthookcode", [])
+            injecttimeout = self.hconfig.get("inserthooktimeout", 500) / 1000
         else:
             injecttimeout = 0
             autostarthookcode = []
@@ -387,7 +384,7 @@ class texthook(basetext):
         self.is64bit = Is64bit(pids[0])
         if (
             len(autostarthookcode) == 0
-            and len(savehook_new_data[self.gameuid]["embedablehook"]) == 0
+            and len(self.hconfig.get("embedablehook", [])) == 0
             and globalconfig["autoopenselecttext"]
         ):
             gobject.baseobject.hookselectdialog.realshowhide.emit(True)
@@ -458,11 +455,11 @@ class texthook(basetext):
             pass
         for hookcode in self.needinserthookcode:
             self.Luna_InsertHookCode(pid, hookcode)
-        if savehook_new_data[self.gameuid]["insertpchooks_string"]:
+        if self.hconfig.get("insertpchooks_string", False):
             self.Luna_InsertPCHooks(pid, 0)
             self.Luna_InsertPCHooks(pid, 1)
         gobject.baseobject.displayinfomessage(
-            savehook_new_data[self.gameuid]["title"], "<msg_info_refresh>"
+            self.hconfig["title"], "<msg_info_refresh>"
         )
         self.flashembedsettings(pid)
         self.setsettings()
@@ -472,9 +469,10 @@ class texthook(basetext):
             self.Luna_InsertPCHooks(pid, which)
 
     def newhookinsert(self, pid, addr, hcode):
-        for _hc, _addr, _ctx1, _ctx2 in savehook_new_data[self.gameuid][
-            "embedablehook"
-        ]:
+        if hcode in self.hconfig.get("removeforeverhook", []):
+            self.Luna_RemoveHook(pid, addr)
+            return
+        for _hc, _, _ctx1, _ctx2 in self.hconfig.get("embedablehook", []):
             if hcode == _hc:
                 tp = ThreadParam()
                 tp.processId = pid
@@ -485,9 +483,9 @@ class texthook(basetext):
 
     def safeembedcheck(self, text):
         try:
-            if globalconfig["embedded"]["safecheck_use"] == False:
+            if not self.embedconfig["safecheck_use"]:
                 return True
-            for regex in globalconfig["embedded"]["safecheckregexs"]:
+            for regex in self.embedconfig["safecheckregexs"]:
                 if re.match(safe_escape(regex), text):
                     return False
             return True
@@ -499,8 +497,8 @@ class texthook(basetext):
         if not self.isautorunning:
             return self.embedcallback(text, "", tp)
         engine = (
-            globalconfig["embedded"]["translator_2"]
-            if globalconfig["embedded"]["use_appointed_translate"]
+            self.embedconfig["translator_2"]
+            if self.embedconfig["use_appointed_translate"]
             else None
         )
         if self.safeembedcheck(text):
@@ -514,13 +512,27 @@ class texthook(basetext):
             trans = "\n".join(collect)
         if not trans:
             trans = ""
-        if globalconfig["embedded"]["trans_kanji"]:
+        if self.embedconfig["trans_kanji"]:
             trans = kanjitrans(zhconv.convert(trans, "zh-tw"))
         self.embedcallback(text, trans, tp)
 
     def embedcallback(self, text: str, trans: str, tp: ThreadParam):
-        trans = splitembedlines(trans)
+        trans = self.splitembedlines(trans)
         self.Luna_embedcallback(tp, text, trans)
+
+    def splitembedlines(self, trans: str):
+        if len(trans) and self.embedconfig["limittextlength_use"]:
+            length = self.embedconfig["limittextlength_length"]
+            lines = trans.split("\n")
+            newlines = []
+            space = getlangtgt().space
+            for line in lines:
+                line = line.split(space) if space else line
+                while len(line):
+                    newlines.append(space.join(line[:length]))
+                    line = line[length:]
+            trans = "\n".join(newlines)
+        return trans
 
     def flashembedsettings(self, pid=None):
         if pid:
@@ -530,16 +542,17 @@ class texthook(basetext):
         for pid in pids:
             self.Luna_EmbedSettings(
                 pid,
-                int(1000 * globalconfig["embedded"]["timeout_translate"]),
+                int(1000 * self.embedconfig["timeout_translate"]),
                 2,  # static_data["charsetmap"][globalconfig['embedded']['changecharset_charset']]
                 False,  # globalconfig['embedded']['changecharset']
                 (
-                    globalconfig["embedded"]["changefont_font"]
-                    if globalconfig["embedded"]["changefont"]
+                    self.embedconfig["changefont_font"]
+                    if self.embedconfig["changefont"]
                     else ""
                 ),
-                globalconfig["embedded"]["displaymode"],
+                self.embedconfig["displaymode"],
                 True,
+                self.embedconfig["clearText"],
             )
 
     def onremovehook(self, hc, hn, tp):
@@ -564,6 +577,8 @@ class texthook(basetext):
         return -1
 
     def onnewhook(self, hc, hn, tp, isembedable):
+        if hc in self.hconfig.get("removeforeverhook", []):
+            return
         key = (hc, hn.decode("utf8"), tp)
         autoindex = self.matchkeyindex(key)
         select = autoindex != -1
@@ -584,7 +599,6 @@ class texthook(basetext):
         gobject.baseobject.hookselectdialog.addnewhooksignal.emit(
             key, select, isembedable
         )
-        return True
 
     def setlang(self):
         self.Luna_SetLanguage(getlanguse().encode())

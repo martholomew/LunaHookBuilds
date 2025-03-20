@@ -2,9 +2,9 @@ from qtsymbols import *
 import os, re, functools, hashlib, json, math, csv, io, pickle
 from traceback import print_exc
 import windows, qtawesome, winsharedutils, gobject, platform, threading
-from myutils.config import _TR, globalconfig
+from myutils.config import _TR, globalconfig, mayberelpath
 from myutils.wrapper import Singleton_close, threader
-from myutils.utils import nowisdark, checkisusingwine, getimagefilefilter
+from myutils.utils import nowisdark, checkisusingwine
 from ctypes import POINTER, cast, c_char
 from gui.dynalang import (
     LLabel,
@@ -855,8 +855,8 @@ def getspinbox(
     return s
 
 
-def D_getspinbox(mini, maxi, d, key, double=False, step=1, callback=None):
-    return lambda: getspinbox(mini, maxi, d, key, double, step, callback)
+def D_getspinbox(mini, maxi, d, key, double=False, step=1, callback=None, default=None):
+    return lambda: getspinbox(mini, maxi, d, key, double, step, callback, default)
 
 
 def getIconButton(
@@ -2606,17 +2606,6 @@ class listediterline(QWidget):
             self.edit.setReadOnly(False)
 
 
-def mayberelpath(path):
-    try:
-        # https://bugs.python.org/issue36689
-        # commonpath在低版本上不能跨盘比较
-        if os.path.commonpath((os.getcwd(), path)) == os.getcwd():
-            return os.path.relpath(path)
-    except:
-        pass
-    return os.path.normpath(path)
-
-
 def openfiledirectory(directory, multi, edit, isdir, filter1="*.*", callback=None):
     if isdir:
         res = QFileDialog.getExistingDirectory(directory=directory)
@@ -3145,8 +3134,12 @@ class ClickableLabel(LLabel):
     def setClickable(self, clickable: bool):
         self._clickable = clickable
 
-    def mousePressEvent(self, event: QMouseEvent):
-        if self._clickable and event.button() == Qt.MouseButton.LeftButton:
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if (
+            self._clickable
+            and event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.pos())
+        ):
             self.clicked.emit()
 
     clicked = pyqtSignal()
@@ -3158,18 +3151,12 @@ class PopupWidget(QWidget):
         self.setWindowFlag(Qt.WindowType.Popup)
         self.dragging = False
         self.offset = None
-        self._block = False
-
-    def blockwindow(self, b):
-        self._block = b
 
     def display(self, pos=None):
         self.move(pos if pos else QCursor.pos())
         self.show()
 
     def mousePressEvent(self, event: QMouseEvent):
-        if self._block:
-            return
         if not self.rect().contains(event.pos()):
             return super().mousePressEvent(event)
 
@@ -3184,8 +3171,6 @@ class PopupWidget(QWidget):
             self.move(QCursor.pos() - self.offset)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
-        if self._block:
-            return
         if not self.rect().contains(event.pos()):
             return super().mouseReleaseEvent(event)
         if event.button() == Qt.MouseButton.LeftButton:

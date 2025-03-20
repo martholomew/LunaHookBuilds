@@ -12,7 +12,6 @@ class TS(basetrans):
             "authority": "translate.volcengine.com",
             "accept": "application/json, text/plain, */*",
             "accept-language": "zh-CN,zh;q=0.9,ar;q=0.8,sq;q=0.7",
-            "content-type": "application/json",
             "origin": "chrome-extension://klgfhbiooeogdfodpopgppeadghjjemk",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
@@ -27,7 +26,7 @@ class TS(basetrans):
             "glossary_list": [],
             "category": "",
         }
-        if self.srclang != Languages.Auto:
+        if not self.is_src_auto:
             json_data["source_language"] = self.srclang
         response = self.proxysession.post(
             "https://translate.volcengine.com/crx/translate/v1/",
