@@ -14,13 +14,18 @@ from gui.usefulwidget import (
     D_getsimpleswitch,
     makescrollgrid,
     CollapsibleBoxWithButton,
-    makesubtab_lazy,
     D_getsimplecombobox,
     makegrid,
     D_getIconButton,
+    getsmalllabel,
+    getboxlayout,
+    NQGroupBox,
+    VisLFormLayout,
+    clearlayout,
+    automakegrid,
 )
 from language import UILanguages, Languages
-from gui.dynalang import LLabel, LPushButton
+from gui.dynalang import LLabel
 
 versionchecktask = queue.Queue()
 
@@ -202,45 +207,24 @@ def versioncheckthread(self):
         )
 
 
-def createdownloadprogress(self):
-
-    self.downloadprogress = QProgressBar(self)
-
-    self.downloadprogress.setRange(0, 10000)
-    self.downloadprogress.setVisible(False)
-    self.downloadprogress.setAlignment(
-        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-    )
-
-    def __cb(self):
-        try:
-            text, val = self.downloadprogress_cache
-        except:
-            return
-        self.downloadprogress.setValue(val)
-        self.downloadprogress.setFormat(text)
-        if val or text:
-            self.downloadprogress.setVisible(True)
-
-    __cb(self)
-    return self.downloadprogress
-
-
 def createversionlabel(self):
 
-    self.versionlabel = LLabel()
-    self.versionlabel.setOpenExternalLinks(True)
-    self.versionlabel.setTextInteractionFlags(
-        Qt.TextInteractionFlag.LinksAccessibleByMouse
+    versionlabel = LLabel()
+    versionlabel.setOpenExternalLinks(False)
+    versionlabel.linkActivated.connect(
+        lambda _: os.startfile(dynamiclink("{main_server}/ChangeLog"))
     )
+    versionlabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse)
     try:
-        self.versionlabel.setText(self.versionlabel_cache)
+        versionlabel.setText(self.versionlabel_cache)
     except:
         pass
+    self.versionlabel = versionlabel
     return self.versionlabel
 
 
 def versionlabelmaybesettext(self, x):
+    x = '<a href="fuck">{}</a>'.format(x)
     try:
         self.versionlabel.setText(x)
     except:
@@ -301,81 +285,6 @@ def offlinelinks(key):
     return box
 
 
-def updatelog():
-
-    box = LPushButton("更新记录")
-    box.clicked.connect(lambda: os.startfile(dynamiclink("{main_server}/ChangeLog")))
-    return box
-
-
-def setTab_about1(self, basel):
-
-    shuominggrid = [
-        ["Github", makehtml("https://github.com/HIllya51/LunaTranslator")],
-        ["项目网站", makehtml("{main_server}/")],
-        [
-            "使用说明",
-            makehtml("{docs_server}", show="https://docs.lunatranslator.org/"),
-        ],
-    ]
-    if getlanguse() == Languages.Chinese:
-        shuominggrid += [
-            [
-                "交流群",
-                makehtml("{main_server}/Resource/QQGroup", show="QQ群963119821"),
-            ],
-            ["如果你感觉该软件对你有帮助，欢迎微信扫码赞助，谢谢~"],
-        ]
-
-        shuominggrid += [[functools.partial(createimageview, self)]]
-    else:
-        shuominggrid += [
-            [
-                "Contact Me",
-                makehtml("{main_server}/Resource/DiscordGroup", show="Discord"),
-            ],
-            [],
-            [
-                "If you feel that the software is helpful to you, ",
-            ],
-            [
-                'welcome to become my <a href="https://patreon.com/HIllya51">sponsor</a>. Thank you ~ ',
-            ],
-        ]
-    makescrollgrid(
-        [
-            [
-                (
-                    dict(
-                        grid=shuominggrid,
-                    ),
-                    0,
-                    "group",
-                )
-            ],
-        ],
-        basel,
-    )
-
-
-def setTab_about(self, basel):
-    tab_widget, do = makesubtab_lazy(
-        [
-            "关于软件",
-            "其他设置",
-            # "年度总结"
-        ],
-        [
-            functools.partial(setTab_about1, self),
-            functools.partial(setTab_update, self),
-            # functools.partial(yearsummary, self),
-        ],
-        delay=True,
-    )
-    basel.addWidget(tab_widget)
-    do()
-
-
 def changeUIlanguage(_):
     languageChangeEvent = QEvent(QEvent.Type.LanguageChange)
     QApplication.sendEvent(QApplication.instance(), languageChangeEvent)
@@ -385,7 +294,7 @@ def changeUIlanguage(_):
         pass
 
 
-def setTab_update(self, basel):
+def updatexx(self):
     version = winsharedutils.queryversion(getcurrexe())
     if version is None:
         versionstring = "unknown"
@@ -393,71 +302,144 @@ def setTab_update(self, basel):
         vs = ".".join(str(_) for _ in version)
         if vs.endswith(".0"):
             vs = vs[:-2]
-        versionstring = ("v{} {}").format(vs, platform.architecture()[0])
-    inner, vis = [_.code for _ in UILanguages], [_.nativename for _ in UILanguages]
-    grid2 = [
-        [
-            (
-                dict(
-                    title="版本更新",
-                    type="grid",
-                    grid=[
-                        [
-                            "自动更新",
-                            (
-                                D_getsimpleswitch(
-                                    globalconfig,
-                                    "autoupdate",
-                                    callback=versionchecktask.put,
-                                ),
-                                0,
-                            ),
-                        ],
-                        [
-                            "当前版本",
-                            versionstring,
-                            "",
-                            "最新版本",
-                            functools.partial(createversionlabel, self),
-                            functools.partial(updatelog),
-                        ],
-                        [(functools.partial(createdownloadprogress, self), 0)],
-                    ],
-                ),
-                0,
-                "group",
-            ),
-        ],
-        [
-            (
-                dict(
-                    title="软件显示语言",
-                    type="grid",
-                    grid=[
-                        [
-                            "软件显示语言",
-                            D_getsimplecombobox(
-                                vis,
-                                globalconfig,
-                                "languageuse2",
-                                callback=changeUIlanguage,
-                                static=True,
-                                internal=inner,
-                            ),
-                            D_getIconButton(
-                                callback=lambda: os.startfile(
-                                    os.path.abspath(
-                                        "./files/lang/{}.json".format(getlanguse())
-                                    )
-                                ),
-                            ),
-                        ],
-                    ],
-                ),
-                0,
-                "group",
-            ),
-        ],
-    ]
+        versionstring = ("v{}").format(vs)
 
-    makescrollgrid(grid2, basel)
+    w = NQGroupBox(self)
+    l = VisLFormLayout(w)
+    self.updatelayout = l
+    l.addRow(
+        getboxlayout(
+            [
+                "自动更新",
+                D_getsimpleswitch(
+                    globalconfig,
+                    "autoupdate",
+                    callback=versionchecktask.put,
+                ),
+                "",
+                "当前版本",
+                versionstring,
+                "",
+                "最新版本",
+                functools.partial(createversionlabel, self),
+            ]
+        )
+    )
+
+    downloadprogress = QProgressBar(self)
+    self.downloadprogress = downloadprogress
+    downloadprogress.setRange(0, 10000)
+    downloadprogress.setAlignment(
+        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    )
+
+    try:
+        text, val = self.downloadprogress_cache
+    except:
+        return
+    downloadprogress.setValue(val)
+    downloadprogress.setFormat(text)
+    l.addRow(downloadprogress)
+
+    l.setRowVisible(1, val or text)
+    return w
+
+
+class aboutwidget(NQGroupBox):
+    def __init__(self, *a):
+        super().__init__(*a)
+        self.grid = QGridLayout(self)
+        self.lastlang = None
+        self.lastlangcomp = {Languages.Chinese: 1, Languages.TradChinese: 2, None: -1}
+        self.updatelangtext()
+
+    def updatelangtext(self):
+        if self.lastlangcomp.get(self.lastlang, 0) == self.lastlangcomp.get(
+            getlanguse(), 0
+        ):
+            return
+        self.lastlan = getlanguse()
+        clearlayout(self.grid)
+        commonlink = [
+            getsmalllabel(
+                makehtml("{main_server}/Github/LunaTranslator", show="Github")
+            ),
+            getsmalllabel(makehtml("{main_server}/", show="项目网站")),
+            getsmalllabel(makehtml("{docs_server}", show="使用说明")),
+        ]
+        qqqun = [
+            getsmalllabel(makehtml("{main_server}/Resource/Bilibili", show="Bilibili")),
+            getsmalllabel(
+                makehtml("{main_server}/Resource/QQGroup", show="QQ群_963119821")
+            ),
+        ]
+        discord = [
+            getsmalllabel(
+                makehtml("{main_server}/Resource/DiscordGroup", show="Discord")
+            )
+        ]
+        if getlanguse() == Languages.Chinese:
+            shuominggrid = [
+                [*commonlink, *qqqun, ""],
+                [("如果你感觉该软件对你有帮助，欢迎微信扫码赞助，谢谢~", -1)],
+                [(functools.partial(createimageview, self), -1)],
+            ]
+
+        else:
+            if getlanguse() == Languages.TradChinese:
+                discord = qqqun + discord
+            shuominggrid = [
+                [*commonlink, *discord, ""],
+                [],
+                [("如果你感觉该软件对你有帮助，", -1)],
+                [
+                    (
+                        '欢迎成为我的<a href="https://patreon.com/HIllya51">sponsor</a>。谢谢~',
+                        -1,
+                        "link",
+                    )
+                ],
+            ]
+
+        automakegrid(self.grid, shuominggrid)
+
+
+def setTab_about(self, basel):
+
+    inner, vis = [_.code for _ in UILanguages], [_.nativename for _ in UILanguages]
+    makescrollgrid(
+        [
+            [functools.partial(updatexx, self)],
+            [
+                (
+                    dict(
+                        type="grid",
+                        grid=[
+                            [
+                                getsmalllabel("软件显示语言"),
+                                D_getsimplecombobox(
+                                    vis,
+                                    globalconfig,
+                                    "languageuse2",
+                                    callback=changeUIlanguage,
+                                    static=True,
+                                    internal=inner,
+                                ),
+                                D_getIconButton(
+                                    callback=lambda: os.startfile(
+                                        os.path.abspath(
+                                            "./files/lang/{}.json".format(getlanguse())
+                                        )
+                                    ),
+                                ),
+                            ],
+                        ],
+                    ),
+                    0,
+                    "group",
+                ),
+            ],
+            [aboutwidget],
+        ],
+        basel,
+    )

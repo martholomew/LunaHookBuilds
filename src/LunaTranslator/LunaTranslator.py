@@ -325,18 +325,16 @@ class MAINUI:
             return
         origin = text
         currentsignature = uuid.uuid4()
-        if not waitforresultcallback:
-            # 内嵌&文件翻译不要进行文本预处理
-            try:
-                text = POSTSOLVE(text)
-                self.settin_ui.showandsolvesig.emit(origin, text)
-                if not text:
-                    return
-            except Exception as e:
-                self.translation_ui.displaystatus.emit(
-                    stringfyerror(e), TextType.Error_origin
-                )
+        try:
+            text = POSTSOLVE(text, isEx=waitforresultcallback)
+            self.settin_ui.showandsolvesig.emit(origin, text)
+            if not text:
                 return
+        except Exception as e:
+            self.translation_ui.displaystatus.emit(
+                stringfyerror(e), TextType.Error_origin
+            )
+            return
 
         if is_auto_run and text == self.currenttext:
             return
@@ -455,6 +453,7 @@ class MAINUI:
         if not globalconfig["refresh_on_get_trans"]:
             _showrawfunction()
             _showrawfunction = None
+        read_trans_once_check = []
         for engine in real_fix_rank:
             if engine in globalconfig["fanyi"]:
                 _colork = engine
@@ -471,6 +470,7 @@ class MAINUI:
                 waitforresultcallback,
                 is_auto_run,
                 result=maybehaspremt.get(engine),
+                read_trans_once_check=read_trans_once_check,
             )
         return True
 
@@ -508,7 +508,8 @@ class MAINUI:
         text_solved,
         waitforresultcallback,
         is_auto_run,
-        result=None,
+        result,
+        read_trans_once_check: list,
     ):
         callback = partial(
             self.GetTranslationCallback,
@@ -519,6 +520,7 @@ class MAINUI:
             optimization_params,
             _showrawfunction,
             text,
+            read_trans_once_check,
         )
         task = (
             callback,
@@ -544,6 +546,7 @@ class MAINUI:
         optimization_params,
         _showrawfunction,
         contentraw,
+        read_trans_once_check: list,
         res: str,
         iter_res_status,
         iserror=False,
@@ -601,11 +604,16 @@ class MAINUI:
                 if not waitforresultcallback:
                     if (
                         globalconfig["read_trans"]
-                        and globalconfig["read_translator2"] == classname
+                        and (not read_trans_once_check)
+                        and (
+                            (globalconfig["toppest_translator"] == classname)
+                            or ((not globalconfig["toppest_translator"]))
+                        )
                     ):
                         self.currentread = res
                         self.currentread_from_origin = False
                         self.readcurrent()
+                        read_trans_once_check.append(classname)
 
                     if globalconfig["textoutput_trans"]:
                         self.dispatchoutputer(res)
@@ -922,7 +930,15 @@ class MAINUI:
             rankkey = rankkeys.get(fanyiorcishu)
             if use:
                 if _type not in globalconfig[rankkey]:
-                    globalconfig[rankkey].append(_type)
+                    # 对于首选的翻译，如果关闭后重新激活，则置顶而非置底
+                    # 若手动调整到非指定位置，则保持不变
+                    if (
+                        fanyiorcishu == "fanyi"
+                        and _type == globalconfig["toppest_translator"]
+                    ):
+                        globalconfig[rankkey].insert(0, _type)
+                    else:
+                        globalconfig[rankkey].append(_type)
             else:
                 if _type in globalconfig[rankkey]:
                     globalconfig[rankkey].remove(_type)
@@ -1069,7 +1085,11 @@ class MAINUI:
         self.tray.show()
         version = winsharedutils.queryversion(getcurrexe())
         if "load_doc_or_log" not in globalconfig:
-            os.startfile(dynamiclink("{docs_server}"))
+            self.showtraymessage(
+                _TR("使用说明"),
+                "",
+                lambda: os.startfile(dynamiclink("{docs_server}")),
+            )
         elif version != tuple(globalconfig["load_doc_or_log"]):
             vs = ".".join(str(_) for _ in version)
             if vs.endswith(".0"):
@@ -1156,7 +1176,7 @@ class MAINUI:
         QListWidget {{
                 font:{fontsize}pt  {fonttype};  }}
             """.format(
-            fontsize=globalconfig["settingfontsize"] + 4,
+            fontsize=globalconfig["settingfontsize"] + 2,
             fonttype=globalconfig["settingfonttype"],
         )
         style += "QGroupBox#notitle{ margin-top:0px;} QGroupBox#notitle:title {margin-top: 0px;}"

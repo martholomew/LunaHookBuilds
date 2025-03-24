@@ -5,6 +5,7 @@ from traceback import print_exc
 from language import TransLanguages
 import gobject, winsharedutils
 import copy
+from myutils.post import processfunctions
 from myutils.config import (
     savehook_new_data,
     uid2gamepath,
@@ -46,6 +47,7 @@ from gui.usefulwidget import (
     getsimpleswitch,
     getsimplepatheditor,
     getboxlayout,
+    NQGroupBox,
     clearlayout,
     getsimplecombobox,
     D_getIconButton,
@@ -455,7 +457,7 @@ class dialog_setting_game_internal(QWidget):
         self.setWindowIcon(_icon)
 
     def starttab(self, formLayout: LFormLayout, gameuid):
-        box = QGroupBox()
+        box = NQGroupBox()
         settinglayout = LFormLayout(box)
 
         def __(box, layout, config, uid):
@@ -942,7 +944,7 @@ class dialog_setting_game_internal(QWidget):
         self.__privatetextproc_gameuid = gameuid
         for row, k in enumerate(
             savehook_new_data[gameuid]["save_text_process_info"]["rank"]
-        ):  # 2
+        ):
             self.__checkaddnewmethod(row, k)
         vbox.addWidget(table)
         buttons = threebuttons(texts=["添加行", "删除行", "上移", "下移"])
@@ -1057,6 +1059,8 @@ class dialog_setting_game_internal(QWidget):
         __viss = []
         _internal = []
         for xx in postprocessconfig:
+            if xx not in processfunctions:
+                continue
             __list = savehook_new_data[self.__privatetextproc_gameuid][
                 "save_text_process_info"
             ]["rank"]
@@ -1199,7 +1203,7 @@ class dialog_setting_game_internal(QWidget):
             ),
         )
         if savehook_new_data[gameuid].get("embedablehook"):
-            box = QGroupBox()
+            box = NQGroupBox()
             settinglayout = LFormLayout(box)
 
             settinglayout.addRow(
@@ -1272,7 +1276,7 @@ class dialog_setting_game_internal(QWidget):
                 savehook_new_data[gameuid]["needinserthookcode"],
             ),
         )
-        box = QGroupBox()
+        box = NQGroupBox()
         settinglayout = LFormLayout(box)
         formLayout.addRow(box)
 
@@ -1327,7 +1331,7 @@ class dialog_setting_game_internal(QWidget):
             ),
         )
         if savehook_new_data[gameuid].get("removeforeverhook"):
-            box = QGroupBox()
+            box = NQGroupBox()
             settinglayout = LFormLayout(box)
 
             settinglayout.addRow(
