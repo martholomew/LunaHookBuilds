@@ -1,7 +1,7 @@
 name: buildlunahook
 on:
   workflow_dispatch:
-
+  workflow_call:
 jobs:
   build_xp:
     runs-on: windows-2019
@@ -11,10 +11,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - run: git submodule init src/cpp/libs/minhook
+      - run: git submodule update src/cpp/libs/minhook
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         with:
-          sdk-version: 26100
-      - run: python src/scripts/build_lunahook.py build x86 0 xp
+          sdk-version: 22621
+      - run: python src/scripts/build_lunahook.py build winxp
       - run: python src/scripts/packlunahook.py
 
       - uses: actions/upload-artifact@v4
@@ -73,10 +75,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - run: git submodule init src/cpp/libs/minhook
+      - run: git submodule update src/cpp/libs/minhook
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         with:
-          sdk-version: 26100
-      - run: python src/scripts/build_lunahook.py build x64 0 win7
+          sdk-version: 22621
+      - run: python src/scripts/build_lunahook.py build ${{matrix.bits}}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -94,7 +98,8 @@ jobs:
       - run: python src/scripts/build_lunahook.py merge
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: LunaHook
-          files: src/cpp/LunaHook/builds/*
+          tag_name: v${{ github.run_number }}
+          release_name: LunaHook v${{ github.run_number }}
+          files: src/cpp/build/Release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
