@@ -4,7 +4,7 @@ on:
   workflow_call:
 jobs:
   build_xp:
-    runs-on: windows-latest
+    runs-on: windows-2022
     permissions:
       id-token: write
       attestations: write
@@ -16,9 +16,6 @@ jobs:
           sdk-version: 26100
       - run: python src/scripts/build_lunahook.py build x86 0 xp
       - run: python src/scripts/packlunahook.py
-
-      - run: dir /s "src\NativeImpl\LunaHook\build"
-        shell: cmd
 
       - uses: actions/upload-artifact@v4
         with:
@@ -80,10 +77,6 @@ jobs:
         with:
           sdk-version: 26100
       - run: python src/scripts/build_lunahook.py build x64 0 win7
-      - run: python src/scripts/packlunahook.py
-
-      - run: dir /s "src\NativeImpl\LunaHook\build"
-        shell: cmd
 
       - uses: actions/upload-artifact@v4
         with:
