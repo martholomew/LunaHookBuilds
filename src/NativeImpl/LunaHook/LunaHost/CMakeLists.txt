@@ -13,6 +13,6 @@ target_link_libraries(LunaHostDll pch host ${YY_Thunks})
 add_executable(LunaHostCLI LunaHostCLI.cpp injector.cpp ${versioninfo})
 target_precompile_headers(LunaHostCLI REUSE_FROM pch)
 set_target_properties(LunaHostCLI PROPERTIES OUTPUT_NAME "LunaHostCLI${bitappendix}")
-target_link_libraries(LunaHostCLI pch host ${YY_Thunks} lang_host)
+target_link_libraries(LunaHostCLI pch host ${YY_Thunks})
 
 add_subdirectory(GUI)

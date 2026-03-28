@@ -24,8 +24,11 @@ int main()
 		    thread.hp.hookcode,
 		    output.c_str()
 		);
-		fflush(stdout);
-		return false; });
+		fflush(stdout); },
+	    {},
+	    {},
+	    {},
+	    {});
 	wchar_t input[500] = {};
 	SearchParam sp;
 	memset(&sp, 0, sizeof(SearchParam));
@@ -58,7 +61,7 @@ int main()
 		wcscpy(command, input);
 		// if (swscanf(input, L"%500s -P%d", command, &processId) != 2) ExitProcess(0);
 		if (_wcsicmp(command, L"attach") == 0)
-			Host::InjectProcess(processId);
+			Host::ConnectAndInjectProcess(processId);
 		else if (_wcsicmp(command, L"detach") == 0)
 		{
 			Host::DetachProcess(processId);
