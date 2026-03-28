@@ -17,6 +17,9 @@ jobs:
       - run: python src/scripts/build_lunahook.py build x86 0 xp
       - run: python src/scripts/packlunahook.py
 
+      - run: dir /s "src\NativeImpl\LunaHook\build"
+        shell: cmd
+
       - uses: actions/upload-artifact@v4
         with:
           name: winxp
@@ -78,6 +81,9 @@ jobs:
           sdk-version: 26100
       - run: python src/scripts/build_lunahook.py build x64 0 win7
       - run: python src/scripts/packlunahook.py
+
+      - run: dir /s "src\NativeImpl\LunaHook\build"
+        shell: cmd
 
       - uses: actions/upload-artifact@v4
         with:
