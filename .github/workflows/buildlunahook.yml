@@ -11,18 +11,16 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - run: git submodule init src/cpp/libs/minhook
-      - run: git submodule update src/cpp/libs/minhook
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         with:
-          sdk-version: 22621
+          sdk-version: 26100
       - run: python src/scripts/build_lunahook.py build winxp
       - run: python src/scripts/packlunahook.py
 
       - uses: actions/upload-artifact@v4
         with:
           name: winxp
-          path: src/cpp/LunaHook/builds
+          path: src/NativeImpl/LunaHook/builds
   
   # build_plugin:
   #   runs-on: windows-latest
@@ -75,17 +73,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - run: git submodule init src/cpp/libs/minhook
-      - run: git submodule update src/cpp/libs/minhook
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         with:
-          sdk-version: 22621
+          sdk-version: 26100
       - run: python src/scripts/build_lunahook.py build ${{matrix.bits}}
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.bits}}
-          path: src/cpp/LunaHook/builds
+          path: src/NativeImpl/LunaHook/builds
   
   build:
     runs-on: windows-latest
@@ -94,12 +90,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-            path: src/cpp/LunaHook/build
+            path: src/NativeImpl/LunaHook/build
       - run: python src/scripts/build_lunahook.py merge
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           release_name: LunaHook v${{ github.run_number }}
-          files: src/cpp/build/Release/*
+          files: src/NativeImpl/build/Release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
